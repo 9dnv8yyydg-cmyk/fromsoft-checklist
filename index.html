@@ -113,8 +113,8 @@ body{font-family:Georgia,serif;background:#0a0a08;color:#c9b99a;min-height:100vh
     <button id="reset-btn" onclick="resetPt()">Reset</button>
   </div>
   <div id="backup-row">
-    <button id="export-btn" onclick="exportBackup()">⬆ Export to iCloud</button>
-    <button id="import-btn" onclick="importBackup()">⬇ Import from iCloud</button>
+    <button id="export-btn" onclick="exportBackup()">⬆ Export</button>
+    <button id="import-btn" onclick="importBackup()">⬇ Import</button>
   </div>
   <div id="sections"></div>
 </div>
@@ -399,8 +399,7 @@ function exportBackup(){
     const data=JSON.stringify(ST,null,2);
     const blob=new Blob([data],{type:"application/json"});
     const url=URL.createObjectURL(blob);
-    const date=new Date().toISOString().slice(0,10);
-    const filename="fromsoft-backup-"+date+".json";
+    const filename="fromsoft-progress.json";
     // Try Web Share API (iOS Share Sheet → Save to Files → iCloud)
     if(navigator.share && navigator.canShare && navigator.canShare({files:[new File([blob],filename,{type:"application/json"})]})){
       navigator.share({
