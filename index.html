@@ -40,9 +40,15 @@ body{font-family:Georgia,serif;background:#0a0a08;color:#c9b99a;min-height:100vh
 #filter-row{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
 .fbtn{padding:4px 12px;border-radius:20px;border:1px solid #2a2218;background:transparent;color:#5a4a38;font-size:10px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;font-family:Georgia,serif}
 #reset-btn{margin-left:auto;padding:4px 12px;border-radius:20px;border:1px solid #2a1818;background:transparent;color:#4a2a2a;font-size:10px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;font-family:Georgia,serif}
+#backup-row{display:flex;gap:8px;margin-bottom:12px}
+#export-btn,#import-btn{flex:1;padding:8px 12px;border-radius:4px;border:1px solid #2e2418;background:#171410;font-size:11px;letter-spacing:.08em;cursor:pointer;font-family:Georgia,serif;text-transform:uppercase;transition:all .15s}
+#export-btn{color:#c0c8a8;border-color:#c0c8a844}
+#export-btn:hover{background:#1e1e16;border-color:#c0c8a8}
+#import-btn{color:#7a9fbd;border-color:#7a9fbd44}
+#import-btn:hover{background:#131820;border-color:#7a9fbd}
 #sections{padding:0 0 80px}
 .sw{margin-bottom:10px;transition:opacity .3s}
-.sw.locked{opacity:.4}
+.sw.locked{opacity:.4;pointer-events:none}
 .sh{width:100%;display:flex;align-items:center;gap:10px;background:#171410;border:1px solid #2e2418;border-radius:4px 4px 0 0;padding:11px 14px;cursor:pointer;text-align:left;font-family:Georgia,serif}
 .sh.coll{border-radius:4px;background:#13110e}
 .sh.lk{cursor:not-allowed}
@@ -52,13 +58,28 @@ body{font-family:Georgia,serif;background:#0a0a08;color:#c9b99a;min-height:100vh
 .scnt{font-size:10px;color:#5a4a38;font-family:monospace}
 .lkmsg{font-size:10px;color:#4a3a28}
 .sitems{border:1px solid #2e2418;border-top:none;border-radius:0 0 4px 4px}
+/* normal item */
 .irow{display:flex;align-items:flex-start;gap:12px;padding:10px 14px;cursor:pointer;border-top:1px solid #1a1612;transition:background .1s;background:transparent}
 .irow:first-child{border-top:none}
 .irow.done{background:#100e0b}
-.irow:not(.done):hover{background:#1a1612}
+.irow:not(.done):not(.choice-row):hover{background:#1a1612}
 .icb{width:15px;height:15px;min-width:15px;border:1px solid #3a2e20;border-radius:2px;display:flex;align-items:center;justify-content:center;margin-top:2px;flex-shrink:0;transition:all .15s}
 .itxt{font-size:13px;line-height:1.5;color:#b09a7a}
 .itxt.done{color:#3a3028;text-decoration:line-through;text-decoration-color:#3a3028}
+/* choice item */
+.choice-row{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border-top:1px solid #1a1612;background:#0e0c0a}
+.choice-row:first-child{border-top:none}
+.choice-label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#7a6a58;margin-bottom:2px}
+.choice-question{font-size:13px;color:#c9a96e;line-height:1.5;margin-bottom:4px}
+.choice-btns{display:flex;flex-wrap:wrap;gap:6px}
+.cbtn{padding:5px 14px;border-radius:3px;border:1px solid;font-size:11px;letter-spacing:.06em;cursor:pointer;font-family:Georgia,serif;transition:all .15s}
+.cbtn.unset{background:transparent;border-color:#3a2e20;color:#8a7a60}
+.cbtn.chosen{background:#2a2010;border-color:#c0883a;color:#c0883a}
+.cbtn.unchosen{background:transparent;border-color:#1e1a14;color:#3a3028;text-decoration:line-through;cursor:default}
+/* consequence tag */
+.conseq{font-size:10px;color:#5a4a38;margin-top:2px;font-style:italic}
+.conseq.open-tag{color:#6a9a6a}
+.conseq.close-tag{color:#9a5a5a}
 </style>
 </head>
 <body>
@@ -91,35 +112,125 @@ body{font-family:Georgia,serif;background:#0a0a08;color:#c9b99a;min-height:100vh
     <button class="fbtn" data-f="missable" onclick="setFilter('missable')">Missable</button>
     <button id="reset-btn" onclick="resetPt()">Reset</button>
   </div>
+  <div id="backup-row">
+    <button id="export-btn" onclick="exportBackup()">⬆ Export to iCloud</button>
+    <button id="import-btn" onclick="importBackup()">⬇ Import from iCloud</button>
+  </div>
   <div id="sections"></div>
 </div>
 <script>
-const GAMES=[{id:"ds1",label:"Dark Souls I",shortLabel:"DS1",accent:"#c0883a",bg:"#0a0a08",sections:[{id:"ds1_undead_asylum",title:"Undead Asylum",type:"main",items:[{id:"ds1_001",text:"Escape your cell, pick up Dungeon Cell Key"},{id:"ds1_002",text:"Defeat Asylum Demon (first encounter — run past or fight)"},{id:"ds1_003",text:"Find the Estus Flask on Oscar's corpse"},{id:"ds1_004",text:"Obtain the Straight Sword Hilt from Oscar"},{id:"ds1_005",text:"Defeat Asylum Demon (boss fight with weapon)"},{id:"ds1_006",text:"Receive the Undead Asylum F2 East Key and Big Pilgrim's Key"}]},{id:"ds1_firelink",title:"Firelink Shrine",type:"main",requires:["ds1_undead_asylum"],items:[{id:"ds1_007",text:"Arrive at Firelink Shrine, light the bonfire"},{id:"ds1_008",text:"Talk to Crestfallen Warrior"},{id:"ds1_009",text:"Talk to Anastacia of Astora (Fire Keeper)"},{id:"ds1_010",text:"Find the elevator shortcut to Undead Burg"}]},{id:"ds1_undead_burg",title:"Undead Burg & Parish",type:"main",requires:["ds1_firelink"],items:[{id:"ds1_011",text:"Light Undead Burg bonfire"},{id:"ds1_012",text:"Defeat Taurus Demon"},{id:"ds1_013",text:"Cross the Hellkite Drake bridge (run or lure)"},{id:"ds1_014",text:"Light Undead Parish bonfire"},{id:"ds1_015",text:"Speak to Solaire of Astora (summon available from here)"},{id:"ds1_016",text:"Defeat Bell Gargoyles, ring the first Bell of Awakening"},{id:"ds1_017",text:"Free Lautrec from his cell (optional — leads to questline)"}]},{id:"ds1_darkroot",title:"Darkroot Garden & Basin",type:"optional",requires:["ds1_undead_burg"],items:[{id:"ds1_018",text:"Light Darkroot Garden bonfire"},{id:"ds1_019",text:"Defeat Moonlight Butterfly (optional)"},{id:"ds1_020",text:"Obtain the Crest of Artorias (unlock sealed door)"},{id:"ds1_021",text:"Defeat Hydra in Darkroot Basin (optional)"},{id:"ds1_022",text:"Free Dusk of Oolacile from golden crystal golem (optional)"},{id:"ds1_023",text:"Fight Forest Hunters (optional — join covenant or fight)"}]},{id:"ds1_lower_undead",title:"Lower Undead Burg & Depths",type:"main",requires:["ds1_undead_burg"],items:[{id:"ds1_024",text:"Unlock the door to Lower Undead Burg (Residence Key)"},{id:"ds1_025",text:"Defeat Capra Demon"},{id:"ds1_026",text:"Light Depths bonfire"},{id:"ds1_027",text:"Rescue Griggs of Vinheim (optional)"},{id:"ds1_028",text:"Defeat Gaping Dragon"},{id:"ds1_029",text:"Free Laurentius of the Great Swamp (pyromancer NPC)"}]},{id:"ds1_blighttown",title:"Blighttown & Quelaag's Domain",type:"main",requires:["ds1_lower_undead"],items:[{id:"ds1_030",text:"Navigate Blighttown (poison swamp)"},{id:"ds1_031",text:"Light Great Hollow / Ash Lake bonfires (optional detour)"},{id:"ds1_032",text:"Defeat Chaos Witch Quelaag"},{id:"ds1_033",text:"Ring the second Bell of Awakening"},{id:"ds1_034",text:"Speak to the Fair Lady in Quelaag's Domain (optional covenant)"}]},{id:"ds1_anor_londo",title:"Sen's Fortress & Anor Londo",type:"main",requires:["ds1_blighttown"],items:[{id:"ds1_035",text:"Enter Sen's Fortress (gate opens after both bells)"},{id:"ds1_036",text:"Defeat the Iron Golem"},{id:"ds1_037",text:"Arrive at Anor Londo"},{id:"ds1_038",text:"Light Anor Londo bonfire"},{id:"ds1_039",text:"Speak to Siegmeyer of Catarina (optional questline)"},{id:"ds1_040",text:"Defeat Dragon Slayer Ornstein & Executioner Smough"},{id:"ds1_041",text:"Receive the Lordvessel from Gwynevere"},{id:"ds1_042",text:"Place the Lordvessel at Firelink Altar"}]},{id:"ds1_lordvessel_areas",title:"Lord Soul Areas (any order)",type:"main",requires:["ds1_anor_londo"],items:[{id:"ds1_043",text:"Defeat Sif the Great Grey Wolf (Darkroot Garden)"},{id:"ds1_044",text:"Enter the Catacombs, defeat Pinwheel, get Rite of Kindling"},{id:"ds1_045",text:"Defeat Gravelord Nito (Tomb of the Giants)"},{id:"ds1_046",text:"Enter New Londo Ruins, drain the water"},{id:"ds1_047",text:"Defeat the Four Kings (New Londo)"},{id:"ds1_048",text:"Enter the Duke's Archives, defeat Seath the Scaleless"},{id:"ds1_049",text:"Enter Lost Izalith, defeat Bed of Chaos"}]},{id:"ds1_dlc",title:"Artorias of the Abyss (DLC)",type:"optional",requires:["ds1_darkroot"],items:[{id:"ds1_050",text:"Find the DLC entrance in Darkroot Basin"},{id:"ds1_051",text:"Travel back in time to Oolacile"},{id:"ds1_052",text:"Defeat Sanctuary Guardian"},{id:"ds1_053",text:"Defeat Artorias the Abysswalker"},{id:"ds1_054",text:"Defeat Manus, Father of the Abyss"},{id:"ds1_055",text:"Defeat Black Dragon Kalameet (optional, cut tail for weapon)"}]},{id:"ds1_endgame",title:"Kiln of the First Flame",type:"main",requires:["ds1_lordvessel_areas"],items:[{id:"ds1_056",text:"Enter the Kiln of the First Flame"},{id:"ds1_057",text:"Defeat Gwyn, Lord of Cinder"},{id:"ds1_058",text:"Choose ending: Link the Fire OR Walk Away (Dark Lord)"}]},{id:"ds1_questlines",title:"Key Questlines & Missables",type:"missable",items:[{id:"ds1_059",text:"Solaire questline — keep him alive, find him in Lost Izalith (avoid Chaos Bugs)"},{id:"ds1_060",text:"Siegmeyer of Catarina — help him 3 times, finish in Ash Lake"},{id:"ds1_061",text:"Lautrec questline — free him, prevent him from killing Fire Keeper (or let it happen)"},{id:"ds1_062",text:"Sorcerer Griggs + Logan questlines"},{id:"ds1_063",text:"Dusk of Oolacile — free her, buy spells before DLC"},{id:"ds1_064",text:"Join Covenant of Artorias (kill Sif while in Darkwraith covenant)"},{id:"ds1_065",text:"Collect all Pyromancy spells from Laurentius and Quelana"},{id:"ds1_066",text:"Cut all boss tails for unique weapons (Seath, Gaping Dragon, Kalameet...)"}]}]},{id:"ds2",label:"Dark Souls II",shortLabel:"DS2",accent:"#7a9fbd",bg:"#08090d",sections:[{id:"ds2_things_betwixt",title:"Things Betwixt & Majula",type:"main",items:[{id:"ds2_001",text:"Complete Things Betwixt intro area"},{id:"ds2_002",text:"Arrive at Majula, light the bonfire"},{id:"ds2_003",text:"Talk to the Emerald Herald (Estus + leveling)"},{id:"ds2_004",text:"Explore Majula: find the mansion, well, pit"},{id:"ds2_005",text:"Rescue Cale the Cartographer (optional — unlocks world map)"}]},{id:"ds2_forest",title:"Forest of Fallen Giants",type:"main",requires:["ds2_things_betwixt"],items:[{id:"ds2_006",text:"Light the Cardinal Tower bonfire"},{id:"ds2_007",text:"Defeat The Last Giant"},{id:"ds2_008",text:"Defeat The Pursuer (optional on first encounter; mandatory later)"},{id:"ds2_009",text:"Find the Soldier Key, open shortcut back to Majula"},{id:"ds2_010",text:"Rescue Pate (optional questline starts here)"}]},{id:"ds2_heide",title:"Heide's Tower of Flame",type:"main",requires:["ds2_forest"],items:[{id:"ds2_011",text:"Light Heide's Tower of Flame bonfire"},{id:"ds2_012",text:"Defeat Dragonrider"},{id:"ds2_013",text:"Defeat Old Dragonslayer (optional)"},{id:"ds2_014",text:"Enter No-man's Wharf"},{id:"ds2_015",text:"Defeat Flexile Sentry"},{id:"ds2_016",text:"Light the ship, travel to Lost Bastille"}]},{id:"ds2_bastille",title:"Lost Bastille & Sinner's Rise",type:"main",requires:["ds2_heide"],items:[{id:"ds2_017",text:"Light Lost Bastille bonfire"},{id:"ds2_018",text:"Defeat Belfry Gargoyles (Belfry Luna — optional)"},{id:"ds2_019",text:"Defeat Ruin Sentinels"},{id:"ds2_020",text:"Reach Sinner's Rise"},{id:"ds2_021",text:"Defeat Lost Sinner"}]},{id:"ds2_huntsmans",title:"Huntsman's Copse & Harvest Valley",type:"main",requires:["ds2_things_betwixt"],items:[{id:"ds2_022",text:"Light Huntsman's Copse bonfire"},{id:"ds2_023",text:"Defeat Skeleton Lords"},{id:"ds2_024",text:"Enter Harvest Valley"},{id:"ds2_025",text:"Defeat Covetous Demon"},{id:"ds2_026",text:"Enter Earthen Peak"},{id:"ds2_027",text:"Defeat Mytha, the Baneful Queen"}]},{id:"ds2_iron_keep",title:"Iron Keep",type:"main",requires:["ds2_huntsmans"],items:[{id:"ds2_028",text:"Light Iron Keep bonfire"},{id:"ds2_029",text:"Defeat Smelter Demon"},{id:"ds2_030",text:"Defeat Old Iron King"},{id:"ds2_031",text:"Optional: Defeat Blue Smelter Demon (Iron Passage)"}]},{id:"ds2_shaded_woods",title:"Shaded Woods & Drangleic Castle",type:"main",requires:["ds2_forest"],items:[{id:"ds2_032",text:"Unlock Shaded Woods (Fragrant Branch of Yore)"},{id:"ds2_033",text:"Light Ruined Fork Road bonfire"},{id:"ds2_034",text:"Defeat Scorpioness Najka"},{id:"ds2_035",text:"Enter Doors of Pharros, defeat Royal Rat Authority"},{id:"ds2_036",text:"Defeat Duke's Dear Freja (Brightstone Cove Tseldora)"},{id:"ds2_037",text:"Enter Drangleic Castle (4 souls required to open gate)"},{id:"ds2_038",text:"Defeat Twin Dragonriders"},{id:"ds2_039",text:"Defeat Looking Glass Knight"}]},{id:"ds2_shrine_amana",title:"Shrine of Amana & Undead Crypt",type:"main",requires:["ds2_shaded_woods"],items:[{id:"ds2_040",text:"Navigate Shrine of Amana (ranged enemies — very annoying)"},{id:"ds2_041",text:"Defeat Demon of Song"},{id:"ds2_042",text:"Light Undead Ditch bonfire"},{id:"ds2_043",text:"Defeat Velstadt, the Royal Aegis"},{id:"ds2_044",text:"Free King Vendrick (optional — needed for true ending)"},{id:"ds2_045",text:"Enter Throne of Want"}]},{id:"ds2_memories",title:"Giant Memories (optional but story-relevant)",type:"optional",requires:["ds2_shaded_woods"],items:[{id:"ds2_046",text:"Obtain the Ashen Mist Heart from Ancient Dragon"},{id:"ds2_047",text:"Enter Memory of Jeigh — defeat Giant Lord"},{id:"ds2_048",text:"Enter Memory of Orro"},{id:"ds2_049",text:"Enter Memory of Vammar"},{id:"ds2_050",text:"Defeat King Vendrick in the Undead Crypt (optional but recommended)"}]},{id:"ds2_dlcs",title:"DLC: Crown of the Sunken King",type:"optional",items:[{id:"ds2_051",text:"Enter Shulva, Sanctum City"},{id:"ds2_052",text:"Navigate the poison/elevator puzzle area"},{id:"ds2_053",text:"Defeat Elana, the Squalid Queen"},{id:"ds2_054",text:"Defeat Sinh, the Slumbering Dragon"},{id:"ds2_055",text:"Collect Crown of the Sunken King"}]},{id:"ds2_dlc2",title:"DLC: Crown of the Old Iron King",type:"optional",items:[{id:"ds2_056",text:"Enter Brume Tower"},{id:"ds2_057",text:"Defeat Fume Knight (one of the hardest bosses in the game)"},{id:"ds2_058",text:"Defeat Sir Alonne"},{id:"ds2_059",text:"Collect Crown of the Old Iron King"}]},{id:"ds2_dlc3",title:"DLC: Crown of the Ivory King",type:"optional",items:[{id:"ds2_060",text:"Enter Frozen Eleum Loyce"},{id:"ds2_061",text:"Free the 3 Loyce Knights (needed for final boss)"},{id:"ds2_062",text:"Defeat Aava, the King's Pet"},{id:"ds2_063",text:"Defeat Burnt Ivory King"},{id:"ds2_064",text:"Collect Crown of the Ivory King"}]},{id:"ds2_endgame",title:"Throne of Want — Endgame",type:"main",requires:["ds2_shrine_amana"],items:[{id:"ds2_065",text:"Defeat Throne Watcher & Defender"},{id:"ds2_066",text:"Defeat Nashandra"},{id:"ds2_067",text:"(True Ending) Defeat Aldia, Scholar of the First Sin (needs all 3 DLC crowns + Vendrick)"},{id:"ds2_068",text:"Choose ending: Link the Flame OR Refuse"}]},{id:"ds2_questlines",title:"Key Questlines & Missables",type:"missable",items:[{id:"ds2_069",text:"Pate & Creighton rivalry — follow both questlines through Brightstone Cove"},{id:"ds2_070",text:"Lucatiel of Mirrah — summon her in 3 fights, talk to her between each"},{id:"ds2_071",text:"Benhart of Jugo — summon him across multiple fights"},{id:"ds2_072",text:"Collect all Estus Flask Shards (12 max) and Sublime Bone Dust (5)"},{id:"ds2_073",text:"Join Company of Champions or Way of Blue (affects world state)"},{id:"ds2_074",text:"Rescue Rosabeth of Melfia (Fragrant Branch of Yore needed)"}]}]},{id:"ds3",label:"Dark Souls III",shortLabel:"DS3",accent:"#a07850",bg:"#09080a",sections:[{id:"ds3_cemetery",title:"Cemetery of Ash & Firelink Shrine",type:"main",items:[{id:"ds3_001",text:"Defeat Iudex Gundyr (tutorial boss)"},{id:"ds3_002",text:"Arrive at Firelink Shrine"},{id:"ds3_003",text:"Talk to the Fire Keeper"},{id:"ds3_004",text:"Talk to Hawkwood (gives Ashen Estus Flask)"},{id:"ds3_005",text:"Buy the Tower Key (optional — access rooftop, crow, etc.)"}]},{id:"ds3_high_wall",title:"High Wall of Lothric",type:"main",requires:["ds3_cemetery"],items:[{id:"ds3_006",text:"Light High Wall of Lothric bonfire"},{id:"ds3_007",text:"Find and send Emma's summons sign (optional)"},{id:"ds3_008",text:"Defeat Vordt of the Boreal Valley"},{id:"ds3_009",text:"Find Greirat's cell, give him the Blue Tearstone Ring"},{id:"ds3_010",text:"Recruit Emma — receive Small Lothric Banner"}]},{id:"ds3_undead_settlement",title:"Undead Settlement",type:"main",requires:["ds3_high_wall"],items:[{id:"ds3_011",text:"Light Undead Settlement bonfire"},{id:"ds3_012",text:"Find Irina of Carim (buy miracles from her)"},{id:"ds3_013",text:"Find Cornyx of the Great Swamp (pyromancer)"},{id:"ds3_014",text:"Defeat Curse-Rotted Greatwood"},{id:"ds3_015",text:"Access Road of Sacrifices"}]},{id:"ds3_road_of_sacrifices",title:"Road of Sacrifices & Farron Keep",type:"main",requires:["ds3_undead_settlement"],items:[{id:"ds3_016",text:"Light Road of Sacrifices bonfire"},{id:"ds3_017",text:"Find Orbeck of Vinheim (sorcerer NPC)"},{id:"ds3_018",text:"Defeat Crystal Sage"},{id:"ds3_019",text:"Navigate Farron Keep (extinguish 3 flames to unlock gate)"},{id:"ds3_020",text:"Defeat Abyss Watchers"}]},{id:"ds3_cathedral",title:"Cathedral of the Deep",type:"main",requires:["ds3_road_of_sacrifices"],items:[{id:"ds3_021",text:"Light Cathedral of the Deep bonfire"},{id:"ds3_022",text:"Find Siegward in the well (give him Siegbrau if you have it)"},{id:"ds3_023",text:"Open the main cathedral doors shortcut"},{id:"ds3_024",text:"Defeat Deacons of the Deep"},{id:"ds3_025",text:"Receive the Small Doll (key to Irithyll)"}]},{id:"ds3_catacombs",title:"Catacombs of Carthus & Smouldering Lake",type:"main",requires:["ds3_road_of_sacrifices"],items:[{id:"ds3_026",text:"Light Catacombs of Carthus bonfire"},{id:"ds3_027",text:"Find Anri and Horace (optional questlines)"},{id:"ds3_028",text:"Cut the bridge rope to use as a ladder shortcut"},{id:"ds3_029",text:"Enter Smouldering Lake (optional — cut the rope bridge)"},{id:"ds3_030",text:"Defeat Old Demon King (optional)"},{id:"ds3_031",text:"Defeat High Lord Wolnir"}]},{id:"ds3_irithyll",title:"Irithyll of the Boreal Valley",type:"main",requires:["ds3_cathedral","ds3_catacombs"],items:[{id:"ds3_032",text:"Use Small Doll to enter Irithyll"},{id:"ds3_033",text:"Light Irithyll of the Boreal Valley bonfire"},{id:"ds3_034",text:"Find Siegward in the kitchen (give Siegbrau, talk)"},{id:"ds3_035",text:"Defeat Pontiff Sulyvahn"},{id:"ds3_036",text:"Navigate Anor Londo (revisited)"},{id:"ds3_037",text:"Defeat Aldrich, Devourer of Gods"}]},{id:"ds3_dungeon",title:"Irithyll Dungeon & Profaned Capital",type:"main",requires:["ds3_irithyll"],items:[{id:"ds3_038",text:"Light Irithyll Dungeon bonfire"},{id:"ds3_039",text:"Find Siegward in the cell (give him his armor back)"},{id:"ds3_040",text:"Enter Profaned Capital"},{id:"ds3_041",text:"Defeat Yhorm the Giant (Siegward's questline ends here)"}]},{id:"ds3_lothric_castle",title:"Lothric Castle & Grand Archives",type:"main",requires:["ds3_dungeon","ds3_irithyll"],items:[{id:"ds3_042",text:"Light Lothric Castle bonfire"},{id:"ds3_043",text:"Defeat Dragonslayer Armour"},{id:"ds3_044",text:"Enter Grand Archives"},{id:"ds3_045",text:"Navigate Grand Archives (dunk head in wax for curse protection)"},{id:"ds3_046",text:"Defeat Twin Princes (Lorian & Lothric)"}]},{id:"ds3_consumed",title:"Untended Graves & Champion Gundyr",type:"optional",requires:["ds3_lothric_castle"],items:[{id:"ds3_047",text:"Defeat Oceiros, the Consumed King (required to reach area)"},{id:"ds3_048",text:"Find the hidden Untended Graves area (secret path)"},{id:"ds3_049",text:"Defeat Champion Gundyr"},{id:"ds3_050",text:"Receive Eyes of a Fire Keeper (needed for secret ending)"}]},{id:"ds3_kiln",title:"Kiln of the First Flame",type:"main",requires:["ds3_lothric_castle"],items:[{id:"ds3_051",text:"Transport all Lords of Cinder to their thrones"},{id:"ds3_052",text:"Travel to Kiln of the First Flame"},{id:"ds3_053",text:"Defeat Soul of Cinder"},{id:"ds3_054",text:"Ending 1: Link the First Flame"},{id:"ds3_055",text:"Ending 2: Walk away (Lord of Hollows)"},{id:"ds3_056",text:"Ending 3: Give Fire Keeper her eyes, summon her during final boss"}]},{id:"ds3_dlc1",title:"DLC: Ashes of Ariandel",type:"optional",items:[{id:"ds3_057",text:"Talk to Gael at Cleansing Chapel (Cathedral of the Deep)"},{id:"ds3_058",text:"Enter the Painted World of Ariandel"},{id:"ds3_059",text:"Light the rope bridge on fire (axe), reach Ariandel Chapel"},{id:"ds3_060",text:"Defeat Sister Friede & Father Ariandel"},{id:"ds3_061",text:"Defeat Champion's Gravetender (optional)"}]},{id:"ds3_dlc2",title:"DLC: The Ringed City",type:"optional",requires:["ds3_dlc1"],items:[{id:"ds3_062",text:"Enter the Dreg Heap (via bonfire after Friede or end-game bonfire)"},{id:"ds3_063",text:"Defeat Demon Prince"},{id:"ds3_064",text:"Enter the Ringed City"},{id:"ds3_065",text:"Find Shira and complete her questline (optional)"},{id:"ds3_066",text:"Defeat Darkeater Midir (optional — hardest dragon fight in the series)"},{id:"ds3_067",text:"Defeat Halflight, Spear of the Church"},{id:"ds3_068",text:"Defeat Slave Knight Gael (final boss of the whole series)"}]},{id:"ds3_questlines",title:"Key Questlines & Missables",type:"missable",items:[{id:"ds3_069",text:"Greirat — send him on 3 scavenging runs, keep him alive (need Siegward and Patches)"},{id:"ds3_070",text:"Siegward of Catarina — full questline (well → kitchen → cell → Yhorm)"},{id:"ds3_071",text:"Anri of Astoria — questline leads to secret wedding ending or Anri's Straight Sword"},{id:"ds3_072",text:"Patches — talk to him in Firelink after Farron Keep and Cathedral"},{id:"ds3_073",text:"Yuria of Londor — join Mound-Makers or Londor covenant via Yoel (5 dark sigils)"},{id:"ds3_074",text:"Orbeck of Vinheim — buy his spells before killing all Lords of Cinder"},{id:"ds3_075",text:"Collect all Estus Shards and Undead Bone Shards"},{id:"ds3_076",text:"Get Eyes of a Fire Keeper from Untended Graves (secret ending)"}]}]},{id:"bb",label:"Bloodborne",shortLabel:"BB",accent:"#8c3a2e",bg:"#0d0a0e",sections:[{id:"bb_central",title:"Central Yharnam",type:"main",items:[{id:"bb_001",text:"Reach Central Yharnam lamp (Iosefka's Clinic)"},{id:"bb_002",text:"Light Tomb of Oedon lamp"},{id:"bb_003",text:"Defeat Cleric Beast (optional — Sword Hunter Badge)"},{id:"bb_004",text:"Talk to Alfred near Cleric Beast area"},{id:"bb_005",text:"Defeat Father Gascoigne"}]},{id:"bb_cathedral",title:"Cathedral Ward & Hemwick",type:"main",requires:["bb_central"],items:[{id:"bb_006",text:"Light Cathedral Ward lamp"},{id:"bb_007",text:"Talk to Eileen the Crow (questline starts here)"},{id:"bb_008",text:"Explore Healing Church Workshop (optional — useful items)"},{id:"bb_009",text:"Defeat Blood-Starved Beast — receive Pthumeru Chalice"},{id:"bb_010",text:"Defeat Witch of Hemwick (unlocks Runes)"},{id:"bb_011",text:"Defeat Vicar Amelia — triggers night cycle"},{id:"bb_012",text:"Watch the altar cutscene to advance the story"}]},{id:"bb_forbidden",title:"Forbidden Woods & Byrgenwerth",type:"main",requires:["bb_cathedral"],items:[{id:"bb_013",text:"Use Lunarium Key (from Amelia's altar) to open Forbidden Woods"},{id:"bb_014",text:"Light Forbidden Woods lamp"},{id:"bb_015",text:"Defeat Shadows of Yharnam"},{id:"bb_016",text:"Light Byrgenwerth lamp"},{id:"bb_017",text:"Talk to Master Willem on the balcony"},{id:"bb_018",text:"Defeat ROM, the Vacuous Spider — triggers blood moon"}]},{id:"bb_yaharghul",title:"Yahar'gul & Nightmare Frontier",type:"main",requires:["bb_forbidden"],items:[{id:"bb_019",text:"Enter Yahar'gul (Unseen Village) post-blood moon"},{id:"bb_020",text:"Light Yahar'gul Chapel lamp"},{id:"bb_021",text:"Optional: reach Nightmare Frontier (Amygdala grab on the way)"},{id:"bb_022",text:"Optional: Defeat Amygdala in Nightmare Frontier"},{id:"bb_023",text:"Defeat The One Reborn"}]},{id:"bb_cainhurst",title:"Forsaken Castle Cainhurst",type:"optional",requires:["bb_cathedral"],items:[{id:"bb_024",text:"Find Cainhurst Summons in Iosefka's Clinic (hidden path from Forbidden Woods)"},{id:"bb_025",text:"Travel to Cainhurst Castle via the Witch's Abode"},{id:"bb_026",text:"Defeat Logarius — optional: join Vilebloods and take the Crown of Illusions"}]},{id:"bb_mensis",title:"Nightmare of Mensis",type:"main",requires:["bb_yaharghul"],items:[{id:"bb_027",text:"Enter Lecture Building (first and second floor lamps)"},{id:"bb_028",text:"Light Nightmare of Mensis lamp"},{id:"bb_029",text:"Defeat Micolash, Host of the Nightmare"},{id:"bb_030",text:"Optional: Drop the brain of Mensis into the pit"},{id:"bb_031",text:"Defeat Mergo's Wet Nurse"}]},{id:"bb_endgame",title:"Hunter's Dream — Endgame",type:"main",requires:["bb_mensis"],items:[{id:"bb_032",text:"Return to Gehrman in Hunter's Dream"},{id:"bb_033",text:"Ending 1: Submit to Gehrman (let him kill you)"},{id:"bb_034",text:"Ending 2: Refuse Gehrman — defeat Gehrman, then Moon Presence"},{id:"bb_035",text:"Ending 3 (True): Consume 3 Umbilical Cords before fighting Moon Presence"}]},{id:"bb_dlc",title:"DLC: The Old Hunters",type:"optional",items:[{id:"bb_036",text:"Obtain Eye of a Blood-Drunk Hunter (Madman in Cathedral Ward, post-blood moon)"},{id:"bb_037",text:"Enter Hunter's Nightmare lamp"},{id:"bb_038",text:"Defeat Ludwig, the Accursed / Holy Blade"},{id:"bb_039",text:"Talk to Simon the Harrowed (optional questline)"},{id:"bb_040",text:"Defeat Living Failures"},{id:"bb_041",text:"Defeat Lady Maria of the Astral Clocktower"},{id:"bb_042",text:"Light Fishing Hamlet lamp"},{id:"bb_043",text:"Defeat Orphan of Kos"}]},{id:"bb_chalices",title:"Chalice Dungeons (Optional)",type:"optional",items:[{id:"bb_044",text:"Complete Pthumeru Chalice"},{id:"bb_045",text:"Complete Central Pthumeru Chalice"},{id:"bb_046",text:"Complete Lower Pthumeru Chalice"},{id:"bb_047",text:"Complete Ailing Loran Chalice"},{id:"bb_048",text:"Complete Defiled Chalice (halved HP — hardest dungeon)"},{id:"bb_049",text:"Defeat Yharnam, Pthumerian Queen (final chalice boss)"}]},{id:"bb_questlines",title:"Key Questlines & Missables",type:"missable",items:[{id:"bb_050",text:"Eileen the Crow — fight Henryk at Tomb of Oedon, fight at Grand Cathedral pre-Amelia"},{id:"bb_051",text:"Alfred — give him the Unopened Summons after Cainhurst"},{id:"bb_052",text:"Arianna — send to Cathedral Ward, collect her blood (and child after ROM)"},{id:"bb_053",text:"Collect all 4 Umbilical Cords (Mergo's Wet Nurse, Arianna's child, Iosefka's Clinic, hidden chest)"},{id:"bb_054",text:"Adella the Nun — rescue her in Yahar'gul (she attacks Arianna if you use her blood too much)"},{id:"bb_055",text:"Djura — talk from the rooftops without attacking his friends, or kill him at BSB"}]}]},{id:"sekiro",label:"Sekiro",shortLabel:"Sekiro",accent:"#c0c8a8",bg:"#080a08",sections:[{id:"sek_ashina_outskirts",title:"Ashina Outskirts",type:"main",items:[{id:"sek_001",text:"Wake up as Wolf, grapple up the cliff"},{id:"sek_002",text:"Reach Ashina Outskirts Gate Path idol"},{id:"sek_003",text:"Fight General Naomori Kawarada"},{id:"sek_004",text:"Defeat Chained Ogre (fire works well)"},{id:"sek_005",text:"Defeat General Tenzen Yamauchi"},{id:"sek_006",text:"Reach Ashina Castle Gate Fortress"},{id:"sek_007",text:"Defeat Gyoubu Oniwa, the Demon of the Iron Fortress"}]},{id:"sek_hirata",title:"Hirata Estate (Memory)",type:"optional",requires:["sek_ashina_outskirts"],items:[{id:"sek_008",text:"Receive the Owl's Bell Demon from Emma (optional)"},{id:"sek_009",text:"Enter Hirata Estate via Buddha Statue prayer"},{id:"sek_010",text:"Defeat Juzou the Drunkard"},{id:"sek_011",text:"Defeat Lady Butterfly"},{id:"sek_012",text:"(Late game) Return to Hirata Estate 2nd time for Owl fight (Purification ending)"}]},{id:"sek_ashina_castle",title:"Ashina Castle",type:"main",requires:["sek_ashina_outskirts"],items:[{id:"sek_013",text:"Reach Ashina Castle idol"},{id:"sek_014",text:"Eavesdrop on Genichiro and his general"},{id:"sek_015",text:"Talk to Emma, find Lord Kuro"},{id:"sek_016",text:"Defeat Blazing Bull (mini-boss)"},{id:"sek_017",text:"Defeat General Kuranosuke Matsumoto"},{id:"sek_018",text:"Reach Ashina Castle Upper Tower"},{id:"sek_019",text:"Defeat Genichiro Ashina (roof fight)"}]},{id:"sek_senpou",title:"Senpou Temple, Mt. Kongo",type:"main",requires:["sek_ashina_castle"],items:[{id:"sek_020",text:"Reach Senpou Temple idols"},{id:"sek_021",text:"Defeat Armored Warrior (mini-boss — push off cliff)"},{id:"sek_022",text:"Defeat Long-arm Centipede Giraffe"},{id:"sek_023",text:"Eavesdrop on the Head Priest"},{id:"sek_024",text:"Ring the Immortal Severance Temple Bell"},{id:"sek_025",text:"Collect the Kite Pinwheel (for Senpou ending)"}]},{id:"sek_sunken_valley",title:"Sunken Valley & Gun Fort",type:"main",requires:["sek_ashina_castle"],items:[{id:"sek_026",text:"Reach Sunken Valley idols"},{id:"sek_027",text:"Defeat Snake Eyes Shirafuji"},{id:"sek_028",text:"Reach Gun Fort"},{id:"sek_029",text:"Defeat Long-arm Centipede Sen'un"},{id:"sek_030",text:"Defeat Guardian Ape (first encounter)"},{id:"sek_031",text:"Obtain the Lotus of the Palace from the headless ape area"}]},{id:"sek_ashina_depths",title:"Ashina Depths & Mibu Village",type:"main",requires:["sek_sunken_valley"],items:[{id:"sek_032",text:"Reach Ashina Depths idol"},{id:"sek_033",text:"Defeat Headless Ape (& his mate — duo fight)"},{id:"sek_034",text:"Enter Mibu Village"},{id:"sek_035",text:"Defeat O'Rin of the Water (optional mini-boss)"},{id:"sek_036",text:"Defeat Corrupted Monk (illusion version)"},{id:"sek_037",text:"Obtain the Shelter Stone"}]},{id:"sek_fountainhead",title:"Fountainhead Palace",type:"main",requires:["sek_ashina_depths","sek_senpou"],items:[{id:"sek_038",text:"Reach Fountainhead Palace"},{id:"sek_039",text:"Defeat Sakura Bull of the Palace"},{id:"sek_040",text:"Defeat Palace Noble (mini-boss)"},{id:"sek_041",text:"Defeat Corrupted Monk (true form)"},{id:"sek_042",text:"Defeat Divine Dragon"},{id:"sek_043",text:"Receive Divine Dragon's Tears"}]},{id:"sek_castle_invaded",title:"Ashina Castle — Invaded (late game)",type:"main",requires:["sek_fountainhead"],items:[{id:"sek_044",text:"Return to invaded Ashina Castle (on fire)"},{id:"sek_045",text:"Defeat Lone Shadow Masanaga (or other mini-bosses)"},{id:"sek_046",text:"Defeat Owl (Father) — Ashina Castle roof (Purification ending only)"},{id:"sek_047",text:"Fight Genichiro Ashina again at Ashina Castle rooftop"},{id:"sek_048",text:"Defeat Isshin, the Sword Saint (final boss)"}]},{id:"sek_endings",title:"Endings (choose one)",type:"main",requires:["sek_castle_invaded"],items:[{id:"sek_049",text:"Ending 1 — Shura: Betray Kuro at Owl's request (very early choice, missable)"},{id:"sek_050",text:"Ending 2 — Immortal Severance: Use Kuro's blood & Everblossom, no special steps"},{id:"sek_051",text:"Ending 3 — Purification: Extra Hirata Estate memory, Owl (Father) fight, give Everblossom to Emma"},{id:"sek_052",text:"Ending 4 — Return (True): Get Dragon's Heritage, Kuro's Charm from Pot Noble Harunaga"}]},{id:"sek_questlines",title:"Key Questlines & Missables",type:"missable",items:[{id:"sek_053",text:"Emma's questline — talk to her frequently; essential for Purification ending"},{id:"sek_054",text:"Sculptor's backstory — eavesdrop on his conversations throughout"},{id:"sek_055",text:"Pot Noble Harunaga & Koremori — trade Treasure Carp Scales for key items"},{id:"sek_056",text:"Hanbei the Undying — practice combat partner; don't kill him until late game"},{id:"sek_057",text:"Collect all Gourd Seeds (12) and Prayer Beads (40) for max HP and healing"},{id:"sek_058",text:"All Shinobi Arts Esoteric Texts — buy from merchants before late game"},{id:"sek_059",text:"Defeat all Headless and Shichimen Warriors (requires Spirit Emblem items)"}]}]},{id:"er",label:"Elden Ring",shortLabel:"ER",accent:"#d4af5a",bg:"#0a0906",sections:[{id:"er_limgrave",title:"Limgrave & Stormveil Castle",type:"main",items:[{id:"er_001",text:"Escape the Cave of Knowledge (tutorial)"},{id:"er_002",text:"Reach the First Step Site of Grace"},{id:"er_003",text:"Talk to Melina at a grace (receive Torrent)"},{id:"er_004",text:"Find the Church of Elleh at night (optional — talk to Renna)"},{id:"er_005",text:"Defeat Margit, the Fell Omen"},{id:"er_006",text:"Navigate Stormveil Castle"},{id:"er_007",text:"Defeat Godrick the Grafted — receive Great Rune"}]},{id:"er_liurnia",title:"Liurnia of the Lakes",type:"main",requires:["er_limgrave"],items:[{id:"er_008",text:"Reach Liurnia (via Stormveil or path around castle)"},{id:"er_009",text:"Find the Academy of Raya Lucaria (use Glintstone Key)"},{id:"er_010",text:"Defeat Red Wolf of Radagon"},{id:"er_011",text:"Defeat Rennala, Queen of the Full Moon"},{id:"er_012",text:"Optional: Find Nepheli Loux, White-Faced Varré, Fia, D, Hyetta (questlines)"},{id:"er_013",text:"Optional: Reach Caria Manor, defeat Royal Knight Loretta"},{id:"er_014",text:"Optional: Enter Three Sisters area, find Ranni's Rise"}]},{id:"er_ranni",title:"Ranni's Questline (optional — Age of Stars ending)",type:"optional",requires:["er_liurnia"],items:[{id:"er_015",text:"Talk to Ranni at Ranni's Rise"},{id:"er_016",text:"Defeat Radahn (unlocks Nokron)"},{id:"er_017",text:"Enter Nokron, Eternal City"},{id:"er_018",text:"Defeat the Mimic Tear"},{id:"er_019",text:"Find the Fingerslayer Blade in the Night's Sacred Ground"},{id:"er_020",text:"Reach the Ainsel River Main (via Ranni's miniature puppet)"},{id:"er_021",text:"Defeat Baleful Shadow"},{id:"er_022",text:"Reach the Lake of Rot, find Astel"},{id:"er_023",text:"Defeat Astel, Naturalborn of the Void"},{id:"er_024",text:"Reach Moonlight Altar — collect Dark Moon Ring"},{id:"er_025",text:"Give the ring to Ranni in Renna's Rise (after Radagon)"}]},{id:"er_caelid",title:"Caelid & Dragonbarrow",type:"main",requires:["er_limgrave"],items:[{id:"er_026",text:"Reach Caelid Waypoint Ruins site of grace"},{id:"er_027",text:"Defeat Starscourge Radahn (Festival of the Stars)"},{id:"er_028",text:"Optional: Explore Dragonbarrow (tough enemies, good rewards)"},{id:"er_029",text:"Optional: Defeat Decaying Ekzykes (dragon on the road)"},{id:"er_030",text:"Enter Redmane Castle for Radahn Festival"}]},{id:"er_altus",title:"Altus Plateau & Leyndell",type:"main",requires:["er_liurnia"],items:[{id:"er_031",text:"Reach Altus Plateau (Grand Lift of Dectus or Ruin-Strewn Precipice)"},{id:"er_032",text:"Light the Altus Highway Junction grace"},{id:"er_033",text:"Optional: Volcano Manor area — Rya, Bernahl, Patches questlines"},{id:"er_034",text:"Optional: Defeat Rykard, Lord of Blasphemy (Volcano Manor)"},{id:"er_035",text:"Enter Leyndell, Royal Capital"},{id:"er_036",text:"Defeat Godfrey, First Elden Lord (golden shade)"},{id:"er_037",text:"Defeat Morgott, the Omen King"},{id:"er_038",text:"Activate the Erdtree's path — enter Mountaintops of the Giants"}]},{id:"er_giants",title:"Mountaintops of the Giants",type:"main",requires:["er_altus"],items:[{id:"er_039",text:"Reach Giants' Gravepost site of grace"},{id:"er_040",text:"Optional: Explore Castle Sol, defeat Commander Niall"},{id:"er_041",text:"Defeat Fire Giant"},{id:"er_042",text:"Burn the Erdtree (Melina sacrifices herself, or use Frenzied Flame path)"},{id:"er_043",text:"Optional: Reach Consecrated Snowfield (Haligtree Medallion required)"},{id:"er_044",text:"Optional: Reach Miquella's Haligtree"},{id:"er_045",text:"Optional: Defeat Malenia, Blade of Miquella"}]},{id:"er_farum",title:"Crumbling Farum Azula",type:"main",requires:["er_giants"],items:[{id:"er_046",text:"Enter Crumbling Farum Azula (after burning Erdtree)"},{id:"er_047",text:"Defeat Godskin Duo"},{id:"er_048",text:"Defeat Maliketh, the Black Blade — transforms Leyndell to Ashen Capital"}]},{id:"er_ashen_leyndell",title:"Leyndell, Ashen Capital",type:"main",requires:["er_farum"],items:[{id:"er_049",text:"Navigate Ashen Capital"},{id:"er_050",text:"Defeat Sir Gideon Ofnir, the All-Knowing"},{id:"er_051",text:"Defeat Godfrey, First Elden Lord (true form)"},{id:"er_052",text:"Defeat Radagon of the Golden Order + Elden Beast"}]},{id:"er_endings",title:"Endings (choose one)",type:"main",requires:["er_ashen_leyndell"],items:[{id:"er_053",text:"Ending 1 — Elden Lord: Mend the Elden Ring (default)"},{id:"er_054",text:"Ending 2 — Ranni's Age of Stars: Complete Ranni's questline, give ring after Radagon"},{id:"er_055",text:"Ending 3 — Lord of Frenzied Flame: Find Three Fingers under Leyndell, burn everything"},{id:"er_056",text:"Ending variants: Goldmask's Law, Dung Eater's Curse, Fia's Age of the Duskborn"}]},{id:"er_optional_areas",title:"Major Optional Areas",type:"optional",items:[{id:"er_057",text:"Siofra River & Mohgwyn Palace (Varré questline or secret teleporter)"},{id:"er_058",text:"Defeat Mohg, Lord of Blood"},{id:"er_059",text:"Nokstella, Eternal City (Ranni's questline)"},{id:"er_060",text:"Deeproot Depths & Fia's questline (Lichdragon Fortissax)"},{id:"er_061",text:"Defeat Dragonlord Placidusax (Farum Azula hidden boss — lie down at the wind area)"}]},{id:"er_dlc",title:"DLC: Shadow of the Erdtree",type:"optional",requires:["er_ashen_leyndell"],items:[{id:"er_062",text:"Defeat Mohg, Lord of Blood AND find Leda in the Realm of Shadow"},{id:"er_063",text:"Enter the Shadow Realm via Mohg's arena"},{id:"er_064",text:"Explore the Shadow of the Erdtree map (collect Scadutree Fragments to scale up)"},{id:"er_065",text:"Defeat Rellana, Twin Moon Knight"},{id:"er_066",text:"Defeat Messmer the Impaler"},{id:"er_067",text:"Defeat Midra, Lord of Frenzied Flame (optional)"},{id:"er_068",text:"Defeat Bayle the Dread (optional dragon boss)"},{id:"er_069",text:"Defeat Romina, Saint of the Bud"},{id:"er_070",text:"Defeat Metyr, Mother of Fingers (optional)"},{id:"er_071",text:"Defeat Scadutree Avatar (optional)"},{id:"er_072",text:"Defeat Promised Consort Radahn (final DLC boss)"}]},{id:"er_questlines",title:"Key Questlines & Missables",type:"missable",items:[{id:"er_073",text:"Ranni — complete her full questline for Age of Stars ending"},{id:"er_074",text:"Fia — give her the Cursemark of Death, defeat Lichdragon Fortissax, Duskborn ending"},{id:"er_075",text:"Goldmask & Brother Corhyn — follow them to Leyndell rooftop, solve the riddle"},{id:"er_076",text:"Dung Eater — collect Seedbed Curses, give him the Loathsome Dung Eater puppet"},{id:"er_077",text:"White-Faced Varré — invade 3 times, get Pureblood Knight's Medal for Mohgwyn"},{id:"er_078",text:"Millicent — Malenia's daughter questline, ends at Haligtree"},{id:"er_079",text:"Nepheli Loux — give her the Ancient Dragon Smithing Stone in Volcano Manor area"},{id:"er_080",text:"Collect all Map Fragments, all Crystal Tears, all Spirit Ashes upgrades"}]}]}];
+// ── ITEM TYPES ────────────────────────────────────────────────────────────────
+// Normal item:  { id, text }
+// Choice item:  { id, type:"choice", question, options:[{id,label,opens:[sectionId],closes:[sectionId],note}] }
+//   - opens: sections unlocked when this option is chosen
+//   - closes: sections permanently greyed/hidden when this option is chosen
+
 const TS={main:{label:"Main",color:"#c9a96e"},optional:{label:"Optional",color:"#6ea0c9"},missable:{label:"Missable",color:"#c96e6e"}};
-const SK="fromsoft-html-v1";
-let ST=load(),AG="ds1",AF="all",CO={},DD=false,RI=null;
-function load(){try{const r=JSON.parse(localStorage.getItem(SK)||"null");if(r&&r.playthroughs)return r;}catch{}const p={},a={};GAMES.forEach(g=>{const id=g.id+"_pt1";p[id]={id,gameId:g.id,name:"Playthrough 1",createdAt:Date.now(),checked:{}};a[g.id]=id;});return{playthroughs:p,activePerGame:a};}
+const SK="fromsoft-v3";
+
+// STATE shape per playthrough:
+// { id, gameId, name, createdAt, checked:{itemId:bool}, choices:{choiceId:optionId}, collapsed:{sectionKey:bool} }
+
+let ST=null, AG="ds1", AF="all", DD=false, RI=null;
+
+function load(){
+  try{const r=JSON.parse(localStorage.getItem(SK)||"null");if(r&&r.playthroughs)return r;}catch{}
+  // GAMES must be defined before this is called
+  const p={},a={};
+  GAMES.forEach(g=>{const id=g.id+"_pt1";p[id]={id,gameId:g.id,name:"Playthrough 1",createdAt:Date.now(),checked:{},choices:{},collapsed:{}};a[g.id]=id;});
+  return{playthroughs:p,activePerGame:a};
+}
 function save(){try{localStorage.setItem(SK,JSON.stringify(ST));}catch{}}
 function uid(){return Math.random().toString(36).slice(2,9);}
 function G(){return GAMES.find(g=>g.id===AG);}
 function PID(){return ST.activePerGame[AG];}
 function PT(){return ST.playthroughs[PID()];}
 function CH(){return PT()?.checked||{};}
+function CHOICES(){return PT()?.choices||{};}
+function COLL(){return PT()?.collapsed||{};}
 function PTS(){return Object.values(ST.playthroughs).filter(p=>p.gameId===AG).sort((a,b)=>a.createdAt-b.createdAt);}
-function unlocked(sec){if(!sec.requires||!sec.requires.length)return true;const g=G();return sec.requires.every(rid=>{const r=g.sections.find(s=>s.id===rid);if(!r)return true;return r.items.filter(i=>CH()[i.id]).length>=Math.ceil(r.items.length*0.5);});}
-function toggleItem(id){const pt=PT();pt.checked[id]=!pt.checked[id];save();render();}
+
+// which sections are force-closed by a choice
+function closedSections(){
+  const closed=new Set();
+  const ch=CHOICES();
+  G().sections.forEach(sec=>{
+    sec.items.forEach(item=>{
+      if(item.type==="choice"&&ch[item.id]){
+        const chosen=item.options.find(o=>o.id===ch[item.id]);
+        if(chosen&&chosen.closes)chosen.closes.forEach(s=>closed.add(s));
+      }
+    });
+  });
+  return closed;
+}
+
+// which sections are force-opened by a choice
+function openedSections(){
+  const opened=new Set();
+  const ch=CHOICES();
+  G().sections.forEach(sec=>{
+    sec.items.forEach(item=>{
+      if(item.type==="choice"&&ch[item.id]){
+        const chosen=item.options.find(o=>o.id===ch[item.id]);
+        if(chosen&&chosen.opens)chosen.opens.forEach(s=>opened.add(s));
+      }
+    });
+  });
+  return opened;
+}
+
+function isSectionUnlocked(sec){
+  const closed=closedSections();
+  if(closed.has(sec.id))return false;
+  if(!sec.requires||!sec.requires.length)return true;
+  const g=G();
+  return sec.requires.every(rid=>{
+    const r=g.sections.find(s=>s.id===rid);
+    if(!r)return true;
+    return r.items.filter(i=>i.type!=="choice"&&CH()[i.id]).length>=Math.ceil(r.items.filter(i=>i.type!=="choice").length*0.5);
+  });
+}
+
+// count checkable (non-choice) items
+function countable(sec){return sec.items.filter(i=>i.type!=="choice");}
+
+// ── ACTIONS ───────────────────────────────────────────────────────────────────
+function toggleItem(id){const pt=PT();if(!pt.checked)pt.checked={};pt.checked[id]=!pt.checked[id];save();render();}
+
+function makeChoice(choiceId,optionId){
+  const pt=PT();
+  if(!pt.choices)pt.choices={};
+  // toggle off if same
+  if(pt.choices[choiceId]===optionId){delete pt.choices[choiceId];}
+  else{pt.choices[choiceId]=optionId;}
+  save();render();
+}
+
 function switchGame(id){AG=id;DD=false;RI=null;render();}
 function toggleDD(e){e.stopPropagation();DD=!DD;renderDD();}
 function switchPt(id){ST.activePerGame[AG]=id;save();DD=false;RI=null;render();}
-function createPt(){const n=PTS().length+1,id=AG+"_"+uid();ST.playthroughs[id]={id,gameId:AG,name:"Playthrough "+n,createdAt:Date.now(),checked:{}};ST.activePerGame[AG]=id;save();DD=false;render();}
-function deletePt(id){if(PTS().length<=1)return;if(!confirm("Delete \""+ST.playthroughs[id]?.name+"\"?"))return;delete ST.playthroughs[id];const r=Object.values(ST.playthroughs).filter(p=>p.gameId===AG);ST.activePerGame[AG]=r[0]?.id||"";save();DD=false;render();}
-function startRename(){RI=PID();const b=document.getElementById("rename-bar");b.classList.add("open");const i=document.getElementById("rename-inp");i.value=PT()?.name||"";i.focus();DD=false;renderDD();}
-function startRenamePt(id){RI=id;const b=document.getElementById("rename-bar");b.classList.add("open");const i=document.getElementById("rename-inp");i.value=ST.playthroughs[id]?.name||"";i.focus();DD=false;renderDD();}
-function commitRename(){if(!RI)return;const v=document.getElementById("rename-inp").value.trim();if(v&&ST.playthroughs[RI]){ST.playthroughs[RI].name=v;save();}cancelRename();}
+function createPt(){
+  const n=PTS().length+1,id=AG+"_"+uid();
+  ST.playthroughs[id]={id,gameId:AG,name:"Playthrough "+n,createdAt:Date.now(),checked:{},choices:{},collapsed:{}};
+  ST.activePerGame[AG]=id;save();DD=false;render();
+}
+function deletePt(id){
+  if(PTS().length<=1)return;
+  if(!confirm("Delete \""+ST.playthroughs[id]?.name+"\"?"))return;
+  delete ST.playthroughs[id];
+  const r=Object.values(ST.playthroughs).filter(p=>p.gameId===AG);
+  ST.activePerGame[AG]=r[0]?.id||"";save();DD=false;render();
+}
+function startRename(){RI=PID();document.getElementById("rename-bar").classList.add("open");const i=document.getElementById("rename-inp");i.value=PT()?.name||"";i.focus();DD=false;renderDD();}
+function startRenamePt(id){RI=id;document.getElementById("rename-bar").classList.add("open");const i=document.getElementById("rename-inp");i.value=ST.playthroughs[id]?.name||"";i.focus();DD=false;renderDD();}
+function commitRename(){if(!RI)return;const v=document.getElementById("rename-inp").value.trim();if(v&&ST.playthroughs[RI])ST.playthroughs[RI].name=v;save();cancelRename();}
 function cancelRename(){RI=null;document.getElementById("rename-bar").classList.remove("open");render();}
-function setFilter(f){AF=f;document.querySelectorAll(".fbtn").forEach(b=>{const g=G(),act=b.dataset.f===f;b.style.borderColor=act?g.accent:"#2a2218";b.style.color=act?g.accent:"#5a4a38";b.style.background=act?g.accent+"22":"transparent";});renderSections();}
-function toggleSec(k){CO[k]=!CO[k];renderSections();}
-function resetPt(){if(!confirm("Reset \""+PT()?.name+"\"?"))return;PT().checked={};save();render();}
+function setFilter(f){AF=f;renderFilters();renderSections();}
+function toggleSec(k){const pt=PT();if(!pt.collapsed)pt.collapsed={};pt.collapsed[k]=!pt.collapsed[k];save();renderSections();}
+function resetPt(){if(!confirm("Reset \""+PT()?.name+"\"?"))return;const pt=PT();pt.checked={};pt.choices={};pt.collapsed={};save();render();}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
 function render(){
   const g=G();
   document.body.style.background=g.bg;
@@ -136,11 +247,12 @@ function render(){
   document.getElementById("rename-save").style.color=g.accent;
   renderTabs();renderProgress();renderDD();renderFilters();renderSections();
 }
+
 function renderTabs(){
   const c=document.getElementById("tabs");c.innerHTML="";
   GAMES.forEach(g=>{
     const pt=ST.playthroughs[ST.activePerGame[g.id]];
-    const items=g.sections.flatMap(s=>s.items);
+    const items=g.sections.flatMap(s=>countable(s));
     const done=items.filter(i=>pt?.checked?.[i.id]).length;
     const pct=items.length?Math.round(done/items.length*100):0;
     const cnt=Object.values(ST.playthroughs).filter(p=>p.gameId===g.id).length;
@@ -155,23 +267,31 @@ function renderTabs(){
     c.appendChild(b);
   });
 }
+
 function renderProgress(){
-  const g=G(),items=g.sections.flatMap(s=>s.items),done=items.filter(i=>CH()[i.id]).length,pct=items.length?Math.round(done/items.length*100):0;
+  const g=G();
+  const items=g.sections.flatMap(s=>countable(s));
+  const done=items.filter(i=>CH()[i.id]).length;
+  const pct=items.length?Math.round(done/items.length*100):0;
   document.getElementById("prog-txt").textContent=done+" / "+items.length+" completed";
   document.getElementById("prog-pct").textContent=pct+"%";
-  document.getElementById("prog-pct").style.color=G().accent;
+  document.getElementById("prog-pct").style.color=g.accent;
   document.getElementById("prog-fill").style.width=pct+"%";
-  document.getElementById("prog-fill").style.background="linear-gradient(90deg,"+G().accent+"88,"+G().accent+")";
+  document.getElementById("prog-fill").style.background="linear-gradient(90deg,"+g.accent+"88,"+g.accent+")";
 }
+
 function renderDD(){
   const dd=document.getElementById("dd"),g=G();
   document.getElementById("pt-arr").textContent=DD?"▴":"▾";
   dd.classList.toggle("open",DD);
   if(!DD)return;
-  const pts=PTS(),items=g.sections.flatMap(s=>s.items);
+  const pts=PTS();
+  const items=g.sections.flatMap(s=>countable(s));
   dd.innerHTML="";
   pts.forEach(pt=>{
-    const done=items.filter(i=>pt.checked?.[i.id]).length,pct=items.length?Math.round(done/items.length*100):0,act=pt.id===PID();
+    const done=items.filter(i=>pt.checked?.[i.id]).length;
+    const pct=items.length?Math.round(done/items.length*100):0;
+    const act=pt.id===PID();
     const row=document.createElement("div");
     row.className="dd-row"+(act?" active":"");
     if(act)row.style.background=g.accent+"18";
@@ -180,36 +300,1343 @@ function renderDD(){
   });
   const nb=document.createElement("button");nb.id="dd-new";nb.textContent="+ New Playthrough";nb.onclick=createPt;dd.appendChild(nb);
 }
+
 function renderFilters(){
   const g=G();
-  document.querySelectorAll(".fbtn").forEach(b=>{const act=b.dataset.f===AF;b.style.borderColor=act?g.accent:"#2a2218";b.style.color=act?g.accent:"#5a4a38";b.style.background=act?g.accent+"22":"transparent";});
+  document.querySelectorAll(".fbtn").forEach(b=>{
+    const act=b.dataset.f===AF;
+    b.style.borderColor=act?g.accent:"#2a2218";
+    b.style.color=act?g.accent:"#5a4a38";
+    b.style.background=act?g.accent+"22":"transparent";
+  });
 }
+
 function renderSections(){
-  const g=G(),c=document.getElementById("sections"),ch=CH();c.innerHTML="";
+  const g=G(),c=document.getElementById("sections"),ch=CH(),choicesMap=CHOICES(),coll=COLL();
+  const closed=closedSections();
+  c.innerHTML="";
   g.sections.forEach(sec=>{
     if(AF!=="all"&&sec.type!==AF)return;
-    const ul=unlocked(sec),done=sec.items.filter(i=>ch[i.id]).length,ck=PID()+"_"+sec.id,coll=CO[ck],ts=TS[sec.type];
-    const wrap=document.createElement("div");wrap.className="sw"+(ul?"":" locked");
+    const isClosed=closed.has(sec.id);
+    const ul=!isClosed&&isSectionUnlocked(sec);
+    const items=countable(sec);
+    const done=items.filter(i=>ch[i.id]).length;
+    const ck=PID()+"_"+sec.id;
+    const isColl=coll[ck];
+    const ts=TS[sec.type];
+
+    const wrap=document.createElement("div");
+    wrap.className="sw"+(ul?"":" locked");
+    if(isClosed)wrap.style.opacity="0.25";
+
     const hdr=document.createElement("button");
-    hdr.className="sh"+(coll?" coll":"")+(ul?"":" lk");
+    hdr.className="sh"+(isColl?" coll":"")+(ul?"":" lk");
     hdr.disabled=!ul;
-    hdr.innerHTML=`<span class="badge" style="color:${ts.color};border-color:${ts.color}44">${ts.label}</span><span class="stitle${ul?"":" lk"}">${sec.title}</span>${ul?`<span class="scnt">${done}/${sec.items.length} ${coll?"▸":"▾"}</span>`:`<span class="lkmsg">🔒 Complete prior areas</span>`}`;
+    let hdrRight=ul
+      ?`<span class="scnt">${done}/${items.length} ${isColl?"▸":"▾"}</span>`
+      :isClosed
+        ?`<span class="lkmsg">✗ Closed by your choices</span>`
+        :`<span class="lkmsg">🔒 Complete prior areas</span>`;
+    hdr.innerHTML=`<span class="badge" style="color:${ts.color};border-color:${ts.color}44">${ts.label}</span><span class="stitle${ul?"":" lk"}">${sec.title}</span>${hdrRight}`;
     if(ul)hdr.onclick=()=>toggleSec(ck);
     wrap.appendChild(hdr);
-    if(!coll&&ul){
+
+    if(!isColl&&ul){
       const sd=document.createElement("div");sd.className="sitems";
       sec.items.forEach(item=>{
-        const dn=!!ch[item.id];
-        const row=document.createElement("div");row.className="irow"+(dn?" done":"");row.onclick=()=>toggleItem(item.id);
-        row.innerHTML=`<div class="icb${dn?" done":""}" style="${dn?"border-color:"+g.accent+";background:"+g.accent+"44":""}"> ${dn?`<svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3 5.5L8 1" stroke="${g.accent}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`:""}</div><span class="itxt${dn?" done":""}">${item.text}</span>`;
-        sd.appendChild(row);
+        if(item.type==="choice"){
+          // render choice widget
+          const row=document.createElement("div");row.className="choice-row";
+          const lbl=document.createElement("div");lbl.className="choice-label";lbl.textContent="⚑ Choice";
+          const q=document.createElement("div");q.className="choice-question";q.textContent=item.question;
+          const btns=document.createElement("div");btns.className="choice-btns";
+          const currentChoice=choicesMap[item.id];
+          item.options.forEach(opt=>{
+            const b=document.createElement("button");
+            b.className="cbtn ";
+            if(!currentChoice)b.className+="unset";
+            else if(currentChoice===opt.id)b.className+="chosen";
+            else b.className+="unchosen";
+            b.textContent=opt.label;
+            if(!currentChoice||currentChoice===opt.id)b.onclick=()=>makeChoice(item.id,opt.id);
+            btns.appendChild(b);
+            if(currentChoice===opt.id&&opt.note){
+              const n=document.createElement("div");
+              n.className="conseq open-tag";
+              n.textContent="→ "+opt.note;
+              btns.appendChild(n);
+            }
+          });
+          if(currentChoice){
+            const reset=document.createElement("button");
+            reset.className="cbtn unset";reset.style.fontSize="10px";reset.style.opacity="0.6";
+            reset.textContent="↺ undo";
+            reset.onclick=()=>makeChoice(item.id,choicesMap[item.id]);
+            btns.appendChild(reset);
+          }
+          row.appendChild(lbl);row.appendChild(q);row.appendChild(btns);
+          sd.appendChild(row);
+        } else {
+          // normal item
+          const dn=!!ch[item.id];
+          const row=document.createElement("div");row.className="irow"+(dn?" done":"");
+          row.onclick=()=>toggleItem(item.id);
+          row.innerHTML=`<div class="icb${dn?" done":""}" style="${dn?"border-color:"+g.accent+";background:"+g.accent+"44":""}"> ${dn?`<svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3 5.5L8 1" stroke="${g.accent}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`:""}</div><span class="itxt${dn?" done":""}">${item.text}</span>`;
+          sd.appendChild(row);
+        }
       });
       wrap.appendChild(sd);
     }
     c.appendChild(wrap);
   });
 }
+
 document.addEventListener("click",()=>{if(DD){DD=false;renderDD();}});
+
+// ── EXPORT / IMPORT ───────────────────────────────────────────────────────────
+function exportBackup(){
+  try{
+    const data=JSON.stringify(ST,null,2);
+    const blob=new Blob([data],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const date=new Date().toISOString().slice(0,10);
+    const filename="fromsoft-backup-"+date+".json";
+    // Try Web Share API (iOS Share Sheet → Save to Files → iCloud)
+    if(navigator.share && navigator.canShare && navigator.canShare({files:[new File([blob],filename,{type:"application/json"})]})){
+      navigator.share({
+        files:[new File([blob],filename,{type:"application/json"})],
+        title:"FromSoft Checklist Backup",
+      }).catch(e=>console.log("Share cancelled",e));
+    } else {
+      // Fallback: normal download link
+      const a=document.createElement("a");
+      a.href=url;a.download=filename;a.click();
+      URL.revokeObjectURL(url);
+    }
+  }catch(e){alert("Export failed: "+e);}
+}
+
+function importBackup(){
+  const input=document.createElement("input");
+  input.type="file";input.accept=".json,application/json";
+  input.onchange=function(e){
+    const file=e.target.files[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=function(ev){
+      try{
+        const parsed=JSON.parse(ev.target.result);
+        if(!parsed.playthroughs||!parsed.activePerGame)throw new Error("Invalid backup file");
+        if(!confirm("This will replace ALL current progress with the backup. Continue?"))return;
+        ST=parsed;
+        save();
+        render();
+        alert("Backup restored successfully!");
+      }catch(e){alert("Import failed — invalid file.\n"+e);}
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+// GAMES array injected below by subsequent phases
+const GAMES=[
+{id:"ds1",label:"Dark Souls I",shortLabel:"DS1",accent:"#c0883a",bg:"#0a0a08",sections:[
+{id:"ds1_asylum",title:"Undead Asylum",type:"main",items:[
+{id:"ds1_001",text:"Escape your cell — pick up the Dungeon Cell Key from the corpse above"},
+{id:"ds1_002",text:"Pick up the Broken Straight Sword from the corpse in the main hall"},
+{id:"ds1_003",text:"Enter the fog gate — Asylum Demon appears, run past it to the left door"},
+{id:"ds1_004",text:"Find Oscar of Astora dying through the hole in the floor — receive Estus Flask + Undead Asylum F2 East Key"},
+{id:"ds1_005",text:"Equip the Straight Sword Hilt and open the big door with the F2 East Key"},
+{id:"ds1_006",text:"Return to the Asylum Demon fog gate — plunge attack from above, then finish it"},
+{id:"ds1_007",text:"Receive the Big Pilgrim's Key — open the door to the nest, fly to Lordran"},
+]},
+{id:"ds1_firelink",title:"Firelink Shrine",type:"main",requires:["ds1_asylum"],items:[
+{id:"ds1_008",text:"Light Firelink Shrine bonfire"},
+{id:"ds1_009",text:"Talk to Crestfallen Warrior — learn about the two Bells of Awakening"},
+{id:"ds1_010",text:"Talk to Anastacia of Astora (Fire Keeper) beneath the bonfire"},
+{id:"ds1_011",text:"Talk to Petrus of Thorolund near the shrine"},
+{id:"ds1_012",text:"Find the elevator shortcut up to Undead Burg"},
+{id:"ds1_013",text:"Find the Estus Flask Shard in the well near the shrine"},
+{id:"ds1_014",text:"Explore the graveyard — powerful skeletons, come back with a Divine weapon later"},
+{id:"ds1_015",text:"Find the broken elevator down to New Londo Ruins — don't go in yet"},
+]},
+{id:"ds1_burg",title:"Undead Burg & Parish",type:"main",requires:["ds1_firelink"],items:[
+{id:"ds1_016",text:"Light Undead Burg bonfire"},
+{id:"ds1_017",text:"Buy the Residence Key from the Undead Merchant (also buy the Repairbox)"},
+{id:"ds1_018",text:"Talk to Solaire of Astora on the bridge — receive the White Sign Soapstone"},
+{id:"ds1_019",text:"Defeat Taurus Demon — plunge attack from the ladder on the right"},
+{id:"ds1_020",text:"Cross the Hellkite Drake bridge — sprint across or lure it off with arrows"},
+{id:"ds1_021",text:"Get the Fire Keeper Soul from the chest on the far side of the bridge"},
+{id:"ds1_022",text:"Light Sunlight Altar bonfire — Warrior of Sunlight covenant available"},
+{id:"ds1_023",text:"Light Undead Parish bonfire"},
+{id:"ds1_024",text:"Find Andre of Astora the blacksmith near the Parish — he upgrades weapons"},
+{id:"ds1_025",text:"Free Lautrec of Carim from his cell (Mystery Key or Master Key)"},
+{id:"ds1_026",text:"Defeat Bell Gargoyles on the Parish roof — Solaire can be summoned"},
+{id:"ds1_027",text:"Ring the first Bell of Awakening — receive the Basement Key"},
+{id:"ds1_028",text:"Talk to Oswald of Carim after the gargoyle fight — absolution and sin"},
+{id:"ds1_c01",type:"choice",question:"What do you do with Lautrec of Carim?",options:[
+{id:"ds1_c01_free",label:"Free him & let him live",note:"He will later invade Firelink and kill Anastacia — you must hunt him in Anor Londo to revive her",opens:["ds1_lautrec"],closes:[]},
+{id:"ds1_c01_kill",label:"Kill him in his cell",note:"You get his ring early but miss his questline entirely",opens:[],closes:["ds1_lautrec"]},
+]},
+]},
+{id:"ds1_lautrec",title:"Lautrec Questline",type:"missable",items:[
+{id:"ds1_029",text:"After freeing Lautrec: find him at Firelink — he invades and kills Anastacia the Fire Keeper"},
+{id:"ds1_030",text:"Hunt Lautrec in Anor Londo — he invades your world as a dark spirit near Gwynevere's room"},
+{id:"ds1_031",text:"Defeat Lautrec and his two phantoms — loot his body for the Ring of Favor and Protection"},
+{id:"ds1_032",text:"Retrieve Anastacia's Fire Keeper Soul from Lautrec's corpse"},
+{id:"ds1_033",text:"Return the soul to Anastacia's body in Firelink — she is revived"},
+]},
+{id:"ds1_darkroot",title:"Darkroot Garden & Basin",type:"optional",requires:["ds1_burg"],items:[
+{id:"ds1_034",text:"Light Darkroot Garden bonfire"},
+{id:"ds1_035",text:"Defeat Moonlight Butterfly (optional boss on the stone bridge)"},
+{id:"ds1_036",text:"Buy the Crest of Artorias from Andre (20,000 souls) — opens the sealed door"},
+{id:"ds1_037",text:"Beyond sealed door: Forest Hunter covenant (Alvina the cat) + Shiva of the East"},
+{id:"ds1_038",text:"Light Darkroot Basin bonfire"},
+{id:"ds1_039",text:"Defeat the Hydra in the basin lake"},
+{id:"ds1_040",text:"After killing Hydra: rest at bonfire and return — golden crystal golem appears, free Dusk of Oolacile"},
+{id:"ds1_041",text:"Talk to Dusk — she sells unique sorceries near the basin"},
+{id:"ds1_042",text:"Kill the Crystal Golem near the basin entrance — drops the Broken Pendant (DLC trigger)"},
+]},
+{id:"ds1_depths",title:"Lower Undead Burg & Depths",type:"main",requires:["ds1_burg"],items:[
+{id:"ds1_043",text:"Use the Basement Key to open the lower Undead Burg door"},
+{id:"ds1_044",text:"Navigate lower district — Capra Demon is guarded by two dogs, run up the stairs immediately"},
+{id:"ds1_045",text:"Defeat Capra Demon — plunge attack from the stairs"},
+{id:"ds1_046",text:"Receive the Key to Depths"},
+{id:"ds1_047",text:"Free Griggs of Vinheim from a locked room (Residence Key) — he sells sorceries at Firelink"},
+{id:"ds1_048",text:"Light Depths bonfire"},
+{id:"ds1_049",text:"Free Laurentius of the Great Swamp from a barrel — he teaches Pyromancy at Firelink"},
+{id:"ds1_050",text:"Find the Large Ember in the Depths (give to Andre — allows upgrade to +10)"},
+{id:"ds1_051",text:"Defeat Gaping Dragon — massive worm-mouthed boss, weak to fire"},
+{id:"ds1_052",text:"Receive the Blighttown Key"},
+]},
+{id:"ds1_blighttown",title:"Blighttown & Quelaag's Domain",type:"main",requires:["ds1_depths"],items:[
+{id:"ds1_053",text:"Enter Blighttown via Depths door OR via Valley of Drakes shortcut (Master Key)"},
+{id:"ds1_054",text:"Equip the Rusted Iron Ring from the Asylum revisit — walking in swamp costs no extra stamina"},
+{id:"ds1_055",text:"Navigate upper scaffolding — hollow dart throwers, use a shield"},
+{id:"ds1_056",text:"Light the Blighttown swamp bonfire"},
+{id:"ds1_057",text:"Optional: enter the Great Hollow (giant tree trunk) → leads to Ash Lake and Dragon covenant"},
+{id:"ds1_058",text:"Find Quelana of Izalith in the swamp (she only appears if your Pyromancy Flame is +10 or higher)"},
+{id:"ds1_059",text:"Buy advanced Pyromancy from Quelana — including the rare Fire Tempest"},
+{id:"ds1_060",text:"Defeat Chaos Witch Quelaag"},
+{id:"ds1_061",text:"Ring the second Bell of Awakening — Sen's Fortress gate opens"},
+{id:"ds1_062",text:"Enter Quelaag's Domain — talk to the Fair Lady for Chaos Servant covenant"},
+{id:"ds1_c02",type:"choice",question:"What do you do about Quelaag's sister (Fair Lady / Quelaan)?",options:[
+{id:"ds1_c02_covenant",label:"Join Chaos Servant & give 30 Humanity",note:"Lowers the toxic mist in Blighttown permanently — also needed for Siegmeyer questline completion",opens:["ds1_siegmeyer"],closes:[]},
+{id:"ds1_c02_skip",label:"Skip / ignore her",note:"Toxic mist remains. Siegmeyer questline still possible but harder to complete fully",opens:["ds1_siegmeyer"],closes:[]},
+]},
+]},
+{id:"ds1_sens",title:"Sen's Fortress",type:"main",requires:["ds1_blighttown"],items:[
+{id:"ds1_063",text:"Enter Sen's Fortress — gate opens after both bells"},
+{id:"ds1_064",text:"Navigate boulder traps — hit the mechanism at the top to redirect boulders"},
+{id:"ds1_065",text:"Find Siegmeyer of Catarina stuck at the gate — give him a Firebomb to proceed"},
+{id:"ds1_066",text:"Find the Crestfallen Merchant on the rooftop — sells useful consumables"},
+{id:"ds1_067",text:"Find Big Hat Logan locked in a cage — use the Cage Key to free him"},
+{id:"ds1_068",text:"Light the rooftop bonfire"},
+{id:"ds1_069",text:"Defeat Ricard the Archer (optional NPC invader on the ladder to the roof)"},
+{id:"ds1_070",text:"Defeat the Iron Golem on the roof"},
+{id:"ds1_071",text:"Get sent to Anor Londo by the giant bird"},
+]},
+{id:"ds1_anor_londo",title:"Anor Londo",type:"main",requires:["ds1_sens"],items:[
+{id:"ds1_072",text:"Light Anor Londo bonfire (cathedral entrance)"},
+{id:"ds1_073",text:"Find Siegmeyer of Catarina again near the cathedral entrance"},
+{id:"ds1_074",text:"Navigate the exterior buttresses — the two silver knight archers are the infamous sniper section"},
+{id:"ds1_075",text:"Light the interior bonfire (after the rotating elevator)"},
+{id:"ds1_076",text:"Defeat Dragon Slayer Ornstein & Executioner Smough"},
+{id:"ds1_c03",type:"choice",question:"Kill Ornstein or Smough last? (determines which soul and armor you get)",options:[
+{id:"ds1_c03_ornstein",label:"Kill Smough first → Giant Ornstein",note:"Leo Ring from giant Ornstein. Ornstein's Armor set available from Domhnall of Zena afterward",opens:[],closes:[]},
+{id:"ds1_c03_smough",label:"Kill Ornstein first → Giant Smough",note:"Smough's Armor set drops here. Ornstein's soul transposable for Ornstein's Armor later",opens:[],closes:[]},
+]},
+{id:"ds1_077",text:"Talk to Gwynevere — receive the Lordvessel and Anor Londo bonfire becomes a warp point"},
+{id:"ds1_078",text:"Optional: enter Darkmoon Tomb — Blade of the Darkmoon covenant (Gwyndolin is the boss)"},
+{id:"ds1_c04",type:"choice",question:"Do you kill Gwynevere?",options:[
+{id:"ds1_c04_kill",label:"Kill Gwynevere (she is an illusion)",note:"Anor Londo goes dark, Gwyndolin becomes hostile, Darkmoon covenant blocked. Gwyndolin drops a Fire Keeper Soul",opens:[],closes:["ds1_darkmoon"]},
+{id:"ds1_c04_spare",label:"Leave Gwynevere",note:"Anor Londo stays bright, Gwyndolin stays friendly, Darkmoon covenant available",opens:["ds1_darkmoon"],closes:[]},
+]},
+{id:"ds1_079",text:"Warp to Firelink Altar and place the Lordvessel"},
+]},
+{id:"ds1_darkmoon",title:"Blade of the Darkmoon Covenant",type:"optional",items:[
+{id:"ds1_080",text:"Enter Darkmoon Tomb from Anor Londo (rotating elevator down)"},
+{id:"ds1_081",text:"Talk to Gwyndolin — join the Blade of the Darkmoon covenant"},
+{id:"ds1_082",text:"Rank up by collecting the souvenirs of reprisal from dark spirit invasions"},
+{id:"ds1_083",text:"Reward: Darkmoon Blade miracle (strongest Lightning miracle in the game)"},
+]},
+{id:"ds1_painted",title:"Painted World of Ariamis",type:"optional",requires:["ds1_anor_londo"],items:[
+{id:"ds1_084",text:"Be Hollow when examining the large painting in Anor Londo — need the Peculiar Doll (from Asylum revisit)"},
+{id:"ds1_085",text:"Enter the Painted World of Ariamis"},
+{id:"ds1_086",text:"Light the bonfire inside"},
+{id:"ds1_087",text:"Defeat Phalanx (hollow spear-phalanx boss)"},
+{id:"ds1_088",text:"Find the Annex Key — unlocks the tower with the Pyromancy Flame upgrade"},
+{id:"ds1_c05",type:"choice",question:"What do you do with Crossbreed Priscilla?",options:[
+{id:"ds1_c05_leave",label:"Leave the Painted World peacefully",note:"Priscilla lets you go — you can return later. No boss soul",opens:[],closes:[]},
+{id:"ds1_c05_kill",label:"Fight and kill Priscilla",note:"Cut her tail first for the Lifehunt Scythe. Her soul can be traded for a unique weapon",opens:[],closes:[]},
+]},
+]},
+{id:"ds1_catacombs",title:"Catacombs & Tomb of the Giants",type:"main",requires:["ds1_anor_londo"],items:[
+{id:"ds1_089",text:"Enter the Catacombs from Firelink Shrine (past the graveyard)"},
+{id:"ds1_090",text:"Use a Divine weapon to permanently kill skeletons — otherwise they revive"},
+{id:"ds1_091",text:"Find Patches the Hyena — he kicks you in a pit, then sells items at Firelink afterward"},
+{id:"ds1_092",text:"Defeat Pinwheel — easy boss, drops Rite of Kindling (allows 20 Estus charges per bonfire)"},
+{id:"ds1_093",text:"Enter Tomb of the Giants — pitch black, use the Skull Lantern, Cast Light sorcery, or Sunlight Maggot helmet"},
+{id:"ds1_094",text:"Find Reah of Thorolund and her hollow bodyguards"},
+{id:"ds1_095",text:"Find Paladin Leeroy — he invades near Nito's fog gate"},
+{id:"ds1_096",text:"Defeat Gravelord Nito — weak to fire, use fire weapons or pyromancy"},
+{id:"ds1_097",text:"Place Nito's Lord Soul in the Lordvessel"},
+]},
+{id:"ds1_new_londo",title:"New Londo Ruins & Four Kings",type:"main",requires:["ds1_anor_londo"],items:[
+{id:"ds1_098",text:"Obtain the Key to the Seal from Ingward (NPC at top of New Londo) — or kill him for it"},
+{id:"ds1_099",text:"Drain the water — lowers the water level, reveals the lower ruins"},
+{id:"ds1_100",text:"Ghosts can only be hit with Transient Curse, cursed weapons, or Ghost Blade — buy Transient Curse from Ingward"},
+{id:"ds1_101",text:"Find the Very Large Ember (give to Andre — allows upgrade to +15)"},
+{id:"ds1_102",text:"Equip the Covenant of Artorias ring (from Sif fight) — required to enter the Abyss"},
+{id:"ds1_103",text:"Defeat the Four Kings in the Abyss — fight them quickly before more spawn"},
+{id:"ds1_c06",type:"choice",question:"Talk to Darkstalker Kaathe after Four Kings?",options:[
+{id:"ds1_c06_kaathe",label:"Talk to Kaathe — join Darkwraith covenant",note:"Allows you to place the Lordvessel yourself. Darkwraith covenant + Red Eye Orb. BUT: if you already gave Lordvessel to Frampt, Kaathe disappears",opens:["ds1_darkwraith"],closes:[]},
+{id:"ds1_c06_ignore",label:"Ignore Kaathe",note:"No Darkwraith covenant this playthrough",opens:[],closes:["ds1_darkwraith"]},
+]},
+{id:"ds1_104",text:"Place the Four Kings' Lord Soul in the Lordvessel"},
+]},
+{id:"ds1_darkwraith",title:"Darkwraith Covenant",type:"optional",items:[
+{id:"ds1_105",text:"Join Darkwraith covenant via Kaathe — receive the Red Eye Orb (unlimited invasions)"},
+{id:"ds1_106",text:"Rank up by offering Humanity — rewards: Dark Hand, Darkwraith armor set, Dark Sword"},
+{id:"ds1_107",text:"Dark Hand can drain Humanity from players or NPCs"},
+]},
+{id:"ds1_dukes",title:"Duke's Archives & Crystal Cave",type:"main",requires:["ds1_anor_londo"],items:[
+{id:"ds1_108",text:"Enter Duke's Archives from Anor Londo (past the two golden knights)"},
+{id:"ds1_109",text:"Get killed by Seath on first encounter — you wake up imprisoned"},
+{id:"ds1_110",text:"Escape the prison — find the Peculiar Key, free Big Hat Logan from his cell"},
+{id:"ds1_111",text:"Light the Archive Tower bonfire"},
+{id:"ds1_112",text:"Return to fight Seath — destroy the Primordial Crystal first (makes him mortal)"},
+{id:"ds1_113",text:"Cut Seath's middle tail for the Moonlight Greatsword"},
+{id:"ds1_114",text:"Navigate Crystal Cave — invisible walkways, use fallen crystal pillars as markers"},
+{id:"ds1_115",text:"Place Seath's Lord Soul in the Lordvessel"},
+]},
+{id:"ds1_izalith",title:"Demon Ruins & Lost Izalith",type:"main",requires:["ds1_blighttown"],items:[
+{id:"ds1_116",text:"Enter Demon Ruins from the lower level of Quelaag's Domain"},
+{id:"ds1_117",text:"Defeat Ceaseless Discharge — run back to the fog gate after grabbing the armor to trigger the grab attack, then punish"},
+{id:"ds1_118",text:"Defeat Demon Firesage"},
+{id:"ds1_119",text:"Defeat Centipede Demon — the Orange Charred Ring lets you walk on lava safely"},
+{id:"ds1_c07",type:"choice",question:"Solaire of Astora — do you save him in Lost Izalith?",options:[
+{id:"ds1_c07_save",label:"Save Solaire (kill the Sunlight Maggot bug first)",note:"Find and kill the glowing Chaos Bug in the shortcut area before it infects Solaire. He survives and can be summoned for Gwyn",opens:["ds1_solaire_end"],closes:[]},
+{id:"ds1_c07_fail",label:"Don't save him (or miss the bug)",note:"Solaire goes insane and attacks you in Lost Izalith. He dies.",opens:[],closes:["ds1_solaire_end"]},
+]},
+{id:"ds1_120",text:"Enter Lost Izalith"},
+{id:"ds1_121",text:"Defeat Bed of Chaos — platforming boss, destroy both orbs on the sides then hit the core"},
+{id:"ds1_122",text:"Place Bed of Chaos Lord Soul in the Lordvessel"},
+]},
+{id:"ds1_solaire_end",title:"Solaire — Final Summon",type:"missable",items:[
+{id:"ds1_123",text:"Solaire's summon sign appears outside the Kiln of the First Flame fog gate"},
+{id:"ds1_124",text:"Summon Solaire — he fights alongside you against Gwyn"},
+{id:"ds1_125",text:"If he survives the fight: his questline is complete — Praise the Sun!"},
+]},
+{id:"ds1_siegmeyer",title:"Siegmeyer of Catarina Questline",type:"missable",items:[
+{id:"ds1_126",text:"Sen's Fortress: give Siegmeyer a Firebomb to open his gate — first meeting"},
+{id:"ds1_127",text:"Anor Londo: find Siegmeyer near the cathedral entrance — he is stuck again"},
+{id:"ds1_128",text:"Firelink Shrine: talk to Siegmeyer after Anor Londo — he moves to Blighttown"},
+{id:"ds1_129",text:"Blighttown swamp: find Siegmeyer surrounded by four Infested Barbarians — let him fight, but let him survive (he must land the killing blow on at least one)"},
+{id:"ds1_130",text:"Talk to Sieglinde of Catarina (his daughter) in Firelink or Duke's Archives"},
+{id:"ds1_131",text:"Ash Lake: find Siegmeyer hollow and sitting by the water — talk to him"},
+{id:"ds1_132",text:"Sieglinde kills her hollow father — talk to her in Firelink for the reward: a Titanite Slab"},
+]},
+{id:"ds1_dlc",title:"Artorias of the Abyss (DLC)",type:"optional",requires:["ds1_darkroot"],items:[
+{id:"ds1_133",text:"Have the Broken Pendant (from Crystal Golem in Darkroot Basin)"},
+{id:"ds1_134",text:"Return to Darkroot Basin — an Abyss portal grabs you near where you freed Dusk"},
+{id:"ds1_135",text:"Arrive in Oolacile Township — past Lordran in time"},
+{id:"ds1_136",text:"Light Oolacile Township bonfire"},
+{id:"ds1_137",text:"Find Elizabeth the mushroom NPC — she sells unique sorceries"},
+{id:"ds1_138",text:"Defeat Sanctuary Guardian"},
+{id:"ds1_139",text:"Rescue Princess Dusk of Oolacile from her prison"},
+{id:"ds1_140",text:"Defeat Knight Artorias — corrupted by the Abyss, incredibly aggressive"},
+{id:"ds1_141",text:"Defeat Manus, Father of the Abyss — hardest boss in the game, fast and relentless"},
+{id:"ds1_142",text:"Defeat Black Dragon Kalameet — cut his tail for the Calamity Ring"},
+]},
+{id:"ds1_endgame",title:"Kiln of the First Flame",type:"main",requires:["ds1_catacombs","ds1_new_londo","ds1_dukes","ds1_izalith"],items:[
+{id:"ds1_143",text:"All four Lord Souls placed in the Lordvessel"},
+{id:"ds1_144",text:"Warp to Firelink Altar — the path to the Kiln opens"},
+{id:"ds1_145",text:"Navigate the Kiln — Black Knights patrol the path"},
+{id:"ds1_146",text:"Defeat Gwyn, Lord of Cinder — parry-heavy fight, aggressive but very parriable"},
+{id:"ds1_c08",type:"choice",question:"Which ending do you choose?",options:[
+{id:"ds1_c08_link",label:"Link the Fire",note:"Touch the bonfire — sacrifice yourself, extend the Age of Fire. Standard ending.",opens:[],closes:[]},
+{id:"ds1_c08_dark",label:"Walk Away (Dark Lord ending)",note:"Leave the bonfire — usher in the Age of Dark. Must have talked to Kaathe OR simply walk away.",opens:[],closes:[]},
+]},
+]},
+{id:"ds1_upgrades",title:"Upgrades & Collectibles",type:"missable",items:[
+{id:"ds1_147",text:"Fire Keeper Souls (7 total — give to any Fire Keeper to upgrade Estus Flask): Firelink well, Undead Parish chest, Blighttown chest, Duke's Archives chest, Anastacia corpse (if Lautrec killed her), Daughter of Chaos, Darkmoon Knightess"},
+{id:"ds1_148",text:"Rite of Kindling from Pinwheel — allows up to 20 Estus charges per bonfire (very important)"},
+{id:"ds1_149",text:"Embers for Andre: Regular Ember (Undead Burg), Large Ember (Depths), Very Large Ember (New Londo), Crystal Ember (Duke's), Divine Ember (Darkroot), Large Divine Ember (Tomb of Giants), Dark Ember (Painted World), Large Magic Ember (Duke's Archives)"},
+{id:"ds1_150",text:"Boss tail weapons: Gaping Dragon (Dragon King Greataxe), Seath (Moonlight Greatsword), Priscilla (Lifehunt Scythe), Kalameet (Calamity Ring), Asylum Demon revisit (Large Club)"},
+{id:"ds1_151",text:"Titanite Slabs: Stray Demon revisit in Asylum, Seath tail cut reward, Darkwraith rare drop, Giant Blacksmith shop, Siegmeyer questline reward"},
+]},
+]},
+{id:"ds2",label:"Dark Souls II",shortLabel:"DS2",accent:"#7a9fbd",bg:"#08090d",sections:[
+{id:"ds2_majula",title:"Things Betwixt & Majula",type:"main",items:[
+{id:"ds2_001",text:"Wake up in Things Betwixt — talk to the three old ladies, equip the Aged Feather (infinite homeward bone)"},
+{id:"ds2_002",text:"Arrive at Majula — light the bonfire"},
+{id:"ds2_003",text:"Talk to the Emerald Herald — she levels you up for the rest of the game"},
+{id:"ds2_004",text:"Talk to Crestfallen Saulden (Way of Blue covenant)"},
+{id:"ds2_005",text:"Find Maughlin the Armourer — buy equipment"},
+{id:"ds2_006",text:"Find Melentia the merchant near the start of Forest of Fallen Giants"},
+{id:"ds2_007",text:"Find Cale the Cartographer in Forest of Fallen Giants — send him to the mansion, he opens the world map"},
+{id:"ds2_008",text:"Buy the House Key to enter the Majula mansion (sold by Cale or found in forest)"},
+{id:"ds2_009",text:"Find the pit in Majula — Laddersmith Gilligan can install ladders down for souls"},
+{id:"ds2_010",text:"Find Pate near the Forest of Fallen Giants entrance — questline starts here"},
+]},
+{id:"ds2_forest",title:"Forest of Fallen Giants",type:"main",requires:["ds2_majula"],items:[
+{id:"ds2_011",text:"Light the Cardinal Tower bonfire"},
+{id:"ds2_012",text:"Buy the Blacksmith's Key from Melentia — unlocks Lenigrast outside Majula"},
+{id:"ds2_013",text:"Rescue Pate from a trapped room — he continues his questline"},
+{id:"ds2_014",text:"Find the Soldier Key — opens multiple locked doors in the forest"},
+{id:"ds2_015",text:"Find Estus Flask Shard #1 in a chest near Cardinal Tower"},
+{id:"ds2_016",text:"Find Sublime Bone Dust #1 in the Place Unbeknownst bonfire area (hidden)"},
+{id:"ds2_017",text:"Defeat The Last Giant — he tears off his own arm, straightforward fight"},
+{id:"ds2_018",text:"Defeat The Pursuer on the platform — use the ballista bolts to stagger him"},
+{id:"ds2_019",text:"Optional: be launched by the eagle to Lost Bastille (alternative route)"},
+{id:"ds2_020",text:"Explore the underground area — King's Gate with sleeping Vendrick lore"},
+]},
+{id:"ds2_heide",title:"Heide's Tower of Flame",type:"main",requires:["ds2_majula"],items:[
+{id:"ds2_021",text:"Light Heide's Ruin bonfire"},
+{id:"ds2_022",text:"Defeat Dragonrider — lure him off the platform edge"},
+{id:"ds2_023",text:"Defeat Old Dragonslayer (optional — Ornstein callback)"},
+{id:"ds2_024",text:"Talk to Licia of Lindeldt — she opens the Huntsman's Copse path for 2,000 souls each time"},
+{id:"ds2_025",text:"Enter Cathedral of Blue — Blue Sentinel covenant"},
+{id:"ds2_c01",type:"choice",question:"What do you do with Licia of Lindeldt?",options:[
+{id:"ds2_c01_pay",label:"Pay her 2,000 souls each time",note:"She stays friendly and sells Miracles throughout the game",opens:[],closes:[]},
+{id:"ds2_c01_kill",label:"Kill her for the Rotunda Lockstone",note:"You can move the path yourself permanently, but she is dead and no longer sells Miracles",opens:[],closes:[]},
+]},
+{id:"ds2_026",text:"Enter No-man's Wharf — dark docks full of hollow pirates"},
+{id:"ds2_027",text:"Find and ring the ship bell to lower the gangplank"},
+{id:"ds2_028",text:"Find Lucatiel of Mirrah in the wharf — first encounter, questline starts"},
+{id:"ds2_029",text:"Defeat Flexile Sentry on the ship"},
+{id:"ds2_030",text:"Sail to Lost Bastille"},
+]},
+{id:"ds2_bastille",title:"Lost Bastille & Sinner's Rise",type:"main",requires:["ds2_heide"],items:[
+{id:"ds2_031",text:"Light McDuff's Workshop bonfire — McDuff the blacksmith is here"},
+{id:"ds2_032",text:"Find the Dull Ember in Lost Bastille — give to McDuff to unlock weapon infusions"},
+{id:"ds2_033",text:"Find Lucatiel of Mirrah in Lost Bastille — second encounter"},
+{id:"ds2_034",text:"Defeat Belfry Gargoyles in Belfry Luna (optional — Bell Keeper covenant)"},
+{id:"ds2_035",text:"Defeat Ruin Sentinels — fight them one at a time on the platform above"},
+{id:"ds2_036",text:"Find Estus Flask Shard #2 in a chest"},
+{id:"ds2_037",text:"Enter Sinner's Rise — flooded descending tower"},
+{id:"ds2_038",text:"Lower the water using the two levers"},
+{id:"ds2_039",text:"Defeat Lost Sinner — first of the four Old Ones; two pyromancers light the room on fire in NG+"},
+]},
+{id:"ds2_hunts",title:"Huntsman's Copse & Harvest Valley",type:"main",requires:["ds2_majula"],items:[
+{id:"ds2_040",text:"Enter via Licia's rotating tower from Heide's"},
+{id:"ds2_041",text:"Light Undead Refuge bonfire"},
+{id:"ds2_042",text:"Free Creighton the Wanderer from prison — Pate & Creighton questline continues"},
+{id:"ds2_043",text:"Defeat Skeleton Lords — three bosses that split into smaller skeletons on death"},
+{id:"ds2_044",text:"Enter Harvest Valley through the Skeleton Lords boss room"},
+{id:"ds2_045",text:"Burn the windmill at the top of Earthen Peak — drains poison from the boss room below"},
+{id:"ds2_046",text:"Find Estus Flask Shard #3 in Harvest Valley"},
+{id:"ds2_047",text:"Defeat Covetous Demon"},
+{id:"ds2_048",text:"Defeat Mytha, the Baneful Queen (drain the poison first by burning the windmill above)"},
+]},
+{id:"ds2_iron_keep",title:"Iron Keep",type:"main",requires:["ds2_hunts"],items:[
+{id:"ds2_049",text:"Descend from Earthen Peak into Iron Keep"},
+{id:"ds2_050",text:"Light Ironhearth Hall bonfire"},
+{id:"ds2_051",text:"Find Lucatiel of Mirrah in Iron Keep — third encounter, summon her for the boss"},
+{id:"ds2_052",text:"Find Estus Flask Shard #4"},
+{id:"ds2_053",text:"Defeat Smelter Demon — bring fire resistance, very tanky"},
+{id:"ds2_054",text:"Defeat Old Iron King — lava arena, don't fall in"},
+{id:"ds2_055",text:"Optional (Iron Passage): Defeat Blue Smelter Demon — magic damage version, harder"},
+]},
+{id:"ds2_shaded",title:"Shaded Woods & Brightstone Cove",type:"main",requires:["ds2_forest"],items:[
+{id:"ds2_056",text:"Unpetrify Rosabeth of Melfia blocking the path with a Fragrant Branch of Yore"},
+{id:"ds2_057",text:"Light Ruined Fork Road bonfire — three paths diverge here"},
+{id:"ds2_058",text:"Left path (foggy woods): navigate invisible hollow enemies → Scorpioness Najka"},
+{id:"ds2_059",text:"Defeat Scorpioness Najka"},
+{id:"ds2_060",text:"Enter Doors of Pharros (Rat King covenant) → Defeat Royal Rat Authority"},
+{id:"ds2_061",text:"Right path from fork: leads to Aldia's Keep"},
+{id:"ds2_062",text:"Light Brightstone Cove Tseldora bonfire"},
+{id:"ds2_c02",type:"choice",question:"Pate & Creighton confrontation in Brightstone Cove — who do you side with?",options:[
+{id:"ds2_c02_pate",label:"Side with Pate (kill Creighton)",note:"Pate gives you his armor set as thanks. Creighton is dead.",opens:[],closes:[]},
+{id:"ds2_c02_creighton",label:"Side with Creighton (kill Pate)",note:"Creighton gives you Pate's Set. Pate is dead.",opens:[],closes:[]},
+{id:"ds2_c02_watch",label:"Let them fight / don't interfere",note:"One of them dies on their own. Loot the survivor afterward.",opens:[],closes:[]},
+]},
+{id:"ds2_063",text:"Defeat Duke's Dear Freja — giant spider boss"},
+]},
+{id:"ds2_drangleic",title:"Drangleic Castle",type:"main",requires:["ds2_shaded","ds2_bastille","ds2_iron_keep"],items:[
+{id:"ds2_064",text:"Approach the castle gate — opens when you have enough Old One souls"},
+{id:"ds2_065",text:"Light King's Gate bonfire"},
+{id:"ds2_066",text:"Stone Soldiers animate when you enter each room — be ready"},
+{id:"ds2_067",text:"Activate the 4 Guardian Dragon statues to unlock inner doors"},
+{id:"ds2_068",text:"Defeat Twin Dragonriders — both fight at once"},
+{id:"ds2_069",text:"Defeat Looking Glass Knight — can summon players or NPC phantoms from the mirror"},
+]},
+{id:"ds2_shrine",title:"Shrine of Amana & Undead Crypt",type:"main",requires:["ds2_drangleic"],items:[
+{id:"ds2_070",text:"Light Offerings Road bonfire"},
+{id:"ds2_071",text:"Navigate Shrine of Amana — go slowly, ranged Milfanito healers shoot from range"},
+{id:"ds2_072",text:"Find Lucatiel of Mirrah — fourth encounter, summon her for Demon of Song"},
+{id:"ds2_073",text:"Talk to the Milfanito singers in the shrine"},
+{id:"ds2_074",text:"Defeat Demon of Song — frog-like boss, hides behind its own hands"},
+{id:"ds2_075",text:"Light Undead Ditch bonfire"},
+{id:"ds2_076",text:"Enter Undead Crypt — using light alerts enemies"},
+{id:"ds2_077",text:"Defeat Velstadt, the Royal Aegis — bell-ringing knight"},
+{id:"ds2_078",text:"Enter the inner chamber — King Vendrick walks in circles, hollow and unaggressive"},
+{id:"ds2_c03",type:"choice",question:"Do you fight King Vendrick?",options:[
+{id:"ds2_c03_fight",label:"Fight Vendrick (collect 4 Giant Souls first)",note:"Each Giant Soul reduces his defense. Without them he has 32× normal defense. Drops Vendrick's soul and the King's Ring",opens:[],closes:[]},
+{id:"ds2_c03_skip",label:"Skip Vendrick for now",note:"You can return later. His soul is needed for true ending if you have all 3 DLC crowns",opens:[],closes:[]},
+]},
+]},
+{id:"ds2_memories",title:"Giant Memories & Ancient Dragon",type:"optional",requires:["ds2_drangleic"],items:[
+{id:"ds2_079",text:"Obtain the Ashen Mist Heart — talk to the Ancient Dragon on Dragon Shrine (peaceful) or fight it"},
+{id:"ds2_080",text:"Enter Memory of Jeigh (via the fallen giant in Forest of Fallen Giants) — defeat Giant Lord"},
+{id:"ds2_081",text:"Giant Lord drops the Giant's Kinship — needed to access Throne of Want"},
+{id:"ds2_082",text:"Enter Memory of Orro (via giant in Forest of Fallen Giants)"},
+{id:"ds2_083",text:"Enter Memory of Vammar (via giant in Forest of Fallen Giants)"},
+{id:"ds2_084",text:"Collect 4 Giant Souls total (memories + Ancient Dragon + Shrine of Amana giant) for Vendrick fight"},
+]},
+{id:"ds2_dlc1",title:"DLC: Crown of the Sunken King",type:"optional",items:[
+{id:"ds2_085",text:"Enter Shulva, Sanctum City"},
+{id:"ds2_086",text:"Navigate the elevator and lever puzzle to reveal the city below"},
+{id:"ds2_087",text:"Defeat Elana, the Squalid Queen — she summons Velstadt and skeletons"},
+{id:"ds2_088",text:"Defeat Sinh, the Slumbering Dragon — fast and agile dragon"},
+{id:"ds2_089",text:"Collect Crown of the Sunken King"},
+]},
+{id:"ds2_dlc2",title:"DLC: Crown of the Old Iron King",type:"optional",items:[
+{id:"ds2_090",text:"Enter Brume Tower"},
+{id:"ds2_091",text:"Navigate the tower using ashen idols and elevators"},
+{id:"ds2_092",text:"Defeat Fume Knight (Raime) — one of the hardest bosses in the series"},
+{id:"ds2_093",text:"Defeat Sir Alonne — in the Memory of the Old Iron King, an extremely fast katana boss"},
+{id:"ds2_094",text:"Defeat Blue Smelter Demon (Iron Passage)"},
+{id:"ds2_095",text:"Collect Crown of the Old Iron King"},
+]},
+{id:"ds2_dlc3",title:"DLC: Crown of the Ivory King",type:"optional",items:[
+{id:"ds2_096",text:"Enter Frozen Eleum Loyce"},
+{id:"ds2_097",text:"Find and free all 4 Loyce Knights trapped around the city — they fight for you in the final boss"},
+{id:"ds2_098",text:"Defeat Aava, the King's Pet — use the Frozen Flower to make the invisible tiger visible"},
+{id:"ds2_099",text:"Open the city gates using the mechanisms"},
+{id:"ds2_100",text:"Defeat Burnt Ivory King — Loyce knights handle the charred soldiers so you fight 1v1"},
+{id:"ds2_101",text:"Collect Crown of the Ivory King"},
+]},
+{id:"ds2_endgame",title:"Throne of Want — Endgame",type:"main",requires:["ds2_shrine"],items:[
+{id:"ds2_102",text:"Enter the Throne of Want with the Giant's Kinship"},
+{id:"ds2_103",text:"Defeat Throne Watcher & Throne Defender — they revive each other, kill them close together"},
+{id:"ds2_104",text:"Defeat Nashandra — corrupted by Manus's dark soul fragment"},
+{id:"ds2_c04",type:"choice",question:"True ending — do you have all 3 DLC crowns and talked to Vendrick?",options:[
+{id:"ds2_c04_true",label:"Yes — fight Aldia, Scholar of the First Sin",note:"Aldia appears after Nashandra. Talk to him 3 times without fighting for the 'refuse' dialogue, or fight him",opens:["ds2_aldia"],closes:[]},
+{id:"ds2_c04_normal",label:"No — standard ending",note:"Choose to Link the Flame or walk away",opens:[],closes:["ds2_aldia"]},
+]},
+]},
+{id:"ds2_aldia",title:"Aldia, Scholar of the First Sin",type:"optional",items:[
+{id:"ds2_105",text:"Aldia appears after Nashandra — he is half-tree, half-flame"},
+{id:"ds2_c05",type:"choice",question:"How do you handle Aldia?",options:[
+{id:"ds2_c05_fight",label:"Fight Aldia",note:"He cannot truly be killed. After defeating him: choose Link the Flame or walk away",opens:[],closes:[]},
+{id:"ds2_c05_talk",label:"Talk to him 3 times without fighting",note:"He gives you a different philosophical ending dialogue. Then choose your ending",opens:[],closes:[]},
+]},
+{id:"ds2_106",text:"Choose your ending: Link the Flame OR Refuse (walk away into the dark)"},
+]},
+{id:"ds2_lucatiel",title:"Lucatiel of Mirrah Questline",type:"missable",items:[
+{id:"ds2_107",text:"Meet Lucatiel in No-man's Wharf — first encounter"},
+{id:"ds2_108",text:"Meet her in Lost Bastille — second encounter, talk to her"},
+{id:"ds2_109",text:"Meet her in Iron Keep — third encounter, summon her for Old Iron King and keep her alive"},
+{id:"ds2_110",text:"Meet her in Shrine of Amana — fourth encounter, summon her for Demon of Song and keep her alive"},
+{id:"ds2_111",text:"After completing all encounters: she gives you her armor set (Lucatiel's Set) and the gesture 'Lucatiel'"},
+{id:"ds2_112",text:"She must survive at least 3 of the 4 boss fights to complete the questline"},
+]},
+{id:"ds2_upgrades",title:"Upgrades & Collectibles",type:"missable",items:[
+{id:"ds2_113",text:"Estus Flask Shards (12 total — max +12): Forest ×1, Bastille ×1, Iron Keep ×1, Harvest Valley ×1, Shaded Woods ×1, Shrine of Amana ×1, Drangleic Castle ×1, and more in DLCs"},
+{id:"ds2_114",text:"Sublime Bone Dust (5 total — upgrades Estus quality each time): hidden in bonfires and secret areas"},
+{id:"ds2_115",text:"Fragrant Branch of Yore: used to unpetrify statues — use wisely, limited early game"},
+{id:"ds2_116",text:"Dull Ember: give to McDuff in Lost Bastille — unlocks weapon infusions"},
+{id:"ds2_117",text:"Titanite Slabs: trade with Straid of Olaphis, Dyna & Tillo (give Smooth & Silky Stones), rare drops from Pursuer"},
+{id:"ds2_118",text:"Boss soul weapons: trade boss souls with Straid of Olaphis or Ornifex for unique weapons"},
+]},
+]},
+{id:"ds3",label:"Dark Souls III",shortLabel:"DS3",accent:"#a07850",bg:"#09080a",sections:[
+{id:"ds3_cemetery",title:"Cemetery of Ash & Firelink Shrine",type:"main",items:[
+{id:"ds3_001",text:"Wake up in Cemetery of Ash — pick up the Ashen Estus Flask from the chest"},
+{id:"ds3_002",text:"Defeat Iudex Gundyr — transforms into a serpent mid-fight"},
+{id:"ds3_003",text:"Arrive at Firelink Shrine — light the bonfire"},
+{id:"ds3_004",text:"Talk to the Fire Keeper — she upgrades Estus"},
+{id:"ds3_005",text:"Talk to Hawkwood the Deserter — gives Ashen Estus Flask and Collapse gesture"},
+{id:"ds3_006",text:"Talk to Ludleth of Courland on his throne — he transposes boss souls into weapons/rings"},
+{id:"ds3_007",text:"Buy the Tower Key from Shrine Handmaiden (20,000 souls) — access the roof, crow nest, Pickle Pee trades"},
+{id:"ds3_008",text:"Find the Coiled Sword Fragment on the roof tower — infinite homeward bone equivalent"},
+{id:"ds3_009",text:"Talk to Yoel of Londor near Halfway Fortress bonfire — he offers to draw out your true strength (free levels)"},
+]},
+{id:"ds3_yoel",title:"Yoel & Yuria Questline",type:"missable",requires:["ds3_cemetery"],items:[
+{id:"ds3_c01",type:"choice",question:"Do you take Yoel's free levels (draws out your true strength)?",options:[
+{id:"ds3_c01_yes",label:"Yes — take all 5 free levels from Yoel",note:"You gain 5 Dark Sigils. Yuria of Londor appears in Firelink after the 5th level. Required for Usurpation of Fire ending",opens:["ds3_yuria"],closes:[]},
+{id:"ds3_c01_no",label:"No — ignore Yoel",note:"Yoel dies after Abyss Watchers. Yuria never appears. Usurpation ending is impossible this playthrough",opens:[],closes:["ds3_yuria"]},
+]},
+{id:"ds3_010",text:"WARNING: Yoel dies after you defeat the Abyss Watchers if you haven't taken all 5 levels — do this early"},
+]},
+{id:"ds3_yuria",title:"Yuria of Londor Questline",type:"missable",items:[
+{id:"ds3_011",text:"Yuria appears in Firelink after Yoel gives you the 5th Dark Sigil"},
+{id:"ds3_012",text:"Talk to Yuria — she is Yoel's superior, a Sable Church agent"},
+{id:"ds3_013",text:"Complete Anri of Astoria's questline for the secret wedding (see Anri section)"},
+{id:"ds3_014",text:"Don't cure your Dark Sigils (don't give the Fire Keeper the Eyes of a Fire Keeper while Yuria is alive)"},
+{id:"ds3_015",text:"At the end: Yuria gives you the Hollow Gem and the Pale Shade of Londor summon"},
+]},
+{id:"ds3_high_wall",title:"High Wall of Lothric",type:"main",requires:["ds3_cemetery"],items:[
+{id:"ds3_016",text:"Light High Wall of Lothric bonfire"},
+{id:"ds3_017",text:"Find Greirat of the Undead Settlement in a cell — give him the Blue Tearstone Ring from a nearby corpse"},
+{id:"ds3_018",text:"Find Estus Shard #1 on the rooftop near the first bonfire"},
+{id:"ds3_019",text:"Find Loretta's Bone on a corpse — give to Greirat to send him on his first scavenge run"},
+{id:"ds3_020",text:"Defeat the Pus of Man enemies on the rooftop (transform when aggroed)"},
+{id:"ds3_021",text:"Defeat Vordt of the Boreal Valley — ice lion boss at the main gate"},
+{id:"ds3_022",text:"Talk to Emma, High Priestess — she gives you the Small Lothric Banner"},
+{id:"ds3_023",text:"Find Leonhard in Firelink after lighting the High Wall bonfire — he gives 5 Cracked Red Eye Orbs"},
+]},
+{id:"ds3_settlement",title:"Undead Settlement",type:"main",requires:["ds3_high_wall"],items:[
+{id:"ds3_024",text:"Light Undead Settlement bonfire"},
+{id:"ds3_025",text:"Find Irina of Carim locked in a cell — free her, she moves to Firelink and sells Miracles"},
+{id:"ds3_026",text:"Find Cornyx of the Great Swamp in a hanging cage — free him, he moves to Firelink and teaches Pyromancy"},
+{id:"ds3_027",text:"Find the Mortician's Ashes — give to Handmaiden to buy the Grave Key (shortcut to Road of Sacrifices)"},
+{id:"ds3_028",text:"Find Estus Shard #2 near the burning tree with white-robed enemies"},
+{id:"ds3_029",text:"Find Undead Bone Shard #1 near the burning tree"},
+{id:"ds3_030",text:"Find Siegward of Catarina in the well outside the settlement — give him Siegbrau (from Patches)"},
+{id:"ds3_031",text:"Defeat Curse-Rotted Greatwood — giant spider tree, drops the Transposing Kiln"},
+{id:"ds3_c02",type:"choice",question:"What do you do with Irina of Carim?",options:[
+{id:"ds3_c02_light",label:"Only give her light Braille Tomes",note:"She stays a maiden and completes her questline peacefully. Gives you a Prayer gesture at the end",opens:[],closes:[]},
+{id:"ds3_c02_dark",label:"Give her dark Braille Tomes",note:"She loses her mind — Eygon the knight takes her away. You lose access to her miracles",opens:[],closes:[]},
+]},
+]},
+{id:"ds3_road",title:"Road of Sacrifices & Farron Keep",type:"main",requires:["ds3_settlement"],items:[
+{id:"ds3_032",text:"Light Road of Sacrifices bonfire"},
+{id:"ds3_033",text:"Find Orbeck of Vinheim in a side cave (need 10 INT to recruit) — he moves to Firelink and sells Sorceries"},
+{id:"ds3_034",text:"Find Estus Shard #3 near the Halfway Fortress bonfire"},
+{id:"ds3_035",text:"Talk to Anri of Astoria and Horace the Hushed at the Halfway Fortress bonfire"},
+{id:"ds3_036",text:"Defeat Crystal Sage — sorcerer boss that teleports around the arena"},
+{id:"ds3_037",text:"Light Farron Keep bonfire (large poison swamp area)"},
+{id:"ds3_038",text:"Extinguish the 3 flames in Farron Keep swamp to open the boss gate"},
+{id:"ds3_039",text:"Find Undead Bone Shard #2 in the Farron Keep swamp"},
+{id:"ds3_040",text:"Find Estus Shard #4 in the Farron Keep Perimeter area"},
+{id:"ds3_041",text:"Enter Old Wolf of Farron area — Watchdogs of Farron covenant"},
+{id:"ds3_042",text:"Defeat Abyss Watchers — wolf knights, one fights the others in the first phase"},
+]},
+{id:"ds3_cathedral",title:"Cathedral of the Deep",type:"main",requires:["ds3_road"],items:[
+{id:"ds3_043",text:"Light Cathedral of the Deep bonfire"},
+{id:"ds3_044",text:"Find Siegward of Catarina in the well outside — give him Siegbrau (bought from Patches after his Firelink appearance)"},
+{id:"ds3_045",text:"Open the main cathedral front doors — creates a shortcut back to the first bonfire"},
+{id:"ds3_046",text:"Find Estus Shard #5 inside the cathedral on an altar"},
+{id:"ds3_047",text:"Find Undead Bone Shard #3 behind a giant in the graveyard"},
+{id:"ds3_048",text:"Find the Deep Braille Divine Tome (give to Irina for dark miracles — see Irina choice above)"},
+{id:"ds3_049",text:"Find Rosaria's Fingers covenant in the cathedral — Rosaria allows respec and appearance change"},
+{id:"ds3_c03",type:"choice",question:"Do you join Rosaria's Fingers covenant?",options:[
+{id:"ds3_c03_join",label:"Join Rosaria's Fingers",note:"You can respec and change appearance. BUT: offering a Pale Tongue to Rosaria kills Sirris's questline permanently",opens:[],closes:[]},
+{id:"ds3_c03_sirris",label:"Don't offer Pale Tongues to Rosaria",note:"Sirris of the Sunless Realms questline stays open — she is a helpful NPC with unique summons",opens:["ds3_sirris"],closes:[]},
+]},
+{id:"ds3_050",text:"Defeat Deacons of the Deep — find and kill the red-glowing Archdeacon"},
+{id:"ds3_051",text:"Receive the Small Doll — key to entering Irithyll"},
+]},
+{id:"ds3_sirris",title:"Sirris of the Sunless Realms Questline",type:"missable",items:[
+{id:"ds3_052",text:"After Cathedral: Sirris appears in Firelink and swears her service to you"},
+{id:"ds3_053",text:"Her summon sign appears at multiple bosses — she helps you fight invading NPC phantoms"},
+{id:"ds3_054",text:"After Irithyll: she asks you to help her fight an invader in the Undead Settlement area"},
+{id:"ds3_055",text:"After defeating the invader: she moves to her grandmother's grave in the Pit of Hollows"},
+{id:"ds3_056",text:"Visit her grave — she leaves you her armor set and the Sunset Shield"},
+]},
+{id:"ds3_catacombs",title:"Catacombs of Carthus & Smouldering Lake",type:"main",requires:["ds3_road"],items:[
+{id:"ds3_057",text:"Light Catacombs of Carthus bonfire"},
+{id:"ds3_058",text:"Find Anri of Astoria in the catacombs — second encounter"},
+{id:"ds3_c04",type:"choice",question:"What do you do about Horace the Hushed (Anri's companion)?",options:[
+{id:"ds3_c04_tell",label:"Tell Anri where Horace is",note:"Anri goes to find Horace. Horace has gone hollow and Anri must kill him — this saddens Anri and affects their quest",opens:[],closes:[]},
+{id:"ds3_c04_silent",label:"Say nothing / kill Horace yourself first",note:"Horace dies without Anri knowing. Anri's questline continues more smoothly toward the secret ending",opens:[],closes:[]},
+]},
+{id:"ds3_059",text:"Cut the rope bridge in the catacombs — it falls and becomes a ladder down"},
+{id:"ds3_060",text:"Find Undead Bone Shard #4 in the catacombs"},
+{id:"ds3_061",text:"Defeat High Lord Wolnir — giant skeleton boss, destroy his three golden bracelets"},
+{id:"ds3_062",text:"Enter Smouldering Lake: shoot the giant ballista's rope OR fall from the rope bridge"},
+{id:"ds3_063",text:"Defeat Old Demon King in Smouldering Lake (optional)"},
+{id:"ds3_064",text:"Find Undead Bone Shard #5 in Smouldering Lake"},
+{id:"ds3_065",text:"Find the Large Ember in Smouldering Lake — gives Andre the ability to do higher infusions"},
+]},
+{id:"ds3_irithyll",title:"Irithyll of the Boreal Valley",type:"main",requires:["ds3_cathedral","ds3_catacombs"],items:[
+{id:"ds3_066",text:"Use the Small Doll to pass through the invisible barrier into Irithyll"},
+{id:"ds3_067",text:"Light Irithyll of the Boreal Valley bonfire"},
+{id:"ds3_068",text:"Find Siegward of Catarina in the kitchen of Irithyll — give him Siegbrau and talk"},
+{id:"ds3_069",text:"Find Anri of Astoria on the long bridge — third encounter"},
+{id:"ds3_c05",type:"choice",question:"Anri's questline — the secret wedding path or the straight sword path?",options:[
+{id:"ds3_c05_wedding",label:"Secret wedding path (Usurpation ending)",note:"Find and kill the assassin hiding as a statue in Church of Yorshka. Anri is then led to Anor Londo for a secret wedding ceremony. Required for Usurpation of Fire ending (also need Yuria's questline)",opens:["ds3_usurpation"],closes:[]},
+{id:"ds3_c05_sword",label:"Let Anri's normal quest play out",note:"Anri continues to fight Aldrich. After Aldrich dies: find Anri's grave in the catacombs for Anri's Straight Sword",opens:[],closes:["ds3_usurpation"]},
+]},
+{id:"ds3_070",text:"Find Estus Shard #6 in a chest in the residential area"},
+{id:"ds3_071",text:"Find Undead Bone Shard #6 on a ledge near the Church of Yorshka"},
+{id:"ds3_072",text:"Light Church of Yorshka bonfire"},
+{id:"ds3_073",text:"Defeat Pontiff Sulyvahn — dual-blade boss, one of the most aggressive in the game"},
+{id:"ds3_074",text:"Navigate through Anor Londo (revisited) — Aldrich Faithful covenant here"},
+{id:"ds3_075",text:"Defeat Aldrich, Devourer of Gods — fights like Gwyndolin, shoots arrow rain from above"},
+]},
+{id:"ds3_usurpation",title:"Usurpation of Fire — Setup",type:"missable",items:[
+{id:"ds3_076",text:"Have 5 Dark Sigils from Yoel AND Yuria alive in Firelink"},
+{id:"ds3_077",text:"Kill the assassin disguised as a statue in the Church of Yorshka (Irithyll)"},
+{id:"ds3_078",text:"Anri is led to Anor Londo for the wedding — a cut-scene plays in front of the altar"},
+{id:"ds3_079",text:"Do NOT cure your Dark Sigils at any point"},
+{id:"ds3_080",text:"At the end, after Soul of Cinder: walk away from the bonfire — Yuria appears and congratulates you"},
+]},
+{id:"ds3_dungeon",title:"Irithyll Dungeon & Profaned Capital",type:"main",requires:["ds3_irithyll"],items:[
+{id:"ds3_081",text:"Light Irithyll Dungeon bonfire"},
+{id:"ds3_082",text:"Find Siegward of Catarina imprisoned in a cell — you need his armor (bought from Patches) to free him"},
+{id:"ds3_083",text:"Find Estus Shard #7 in a chest in the dungeon"},
+{id:"ds3_084",text:"Find Karla the Witch in a cell — free her, she moves to Firelink (sells dark sorceries/pyromancies)"},
+{id:"ds3_085",text:"WARNING: Do not kill the Giants in the dungeon — they help you in Archdragon Peak"},
+{id:"ds3_086",text:"Enter Profaned Capital"},
+{id:"ds3_087",text:"Find Undead Bone Shard #7 in Profaned Capital"},
+{id:"ds3_088",text:"Defeat Yhorm the Giant — use the Storm Ruler great sword found in the boss room, charge its skill"},
+{id:"ds3_089",text:"Siegward appears during the Yhorm fight and helps — his questline ends here, giving you his armor and Siegbrau"},
+]},
+{id:"ds3_patches",title:"Patches Questline",type:"missable",items:[
+{id:"ds3_c06",type:"choice",question:"Patches — how do you handle him in the Cathedral tower?",options:[
+{id:"ds3_c06_forgive",label:"Forgive Patches after he kicks you in the pit",note:"He moves to Firelink and sells items including Siegward's armor, Siegbrau, and the Rusted Gold Coin. Essential for Siegward and Greirat questlines",opens:["ds3_greirat"],closes:[]},
+{id:"ds3_c06_kill",label:"Kill Patches",note:"You get his armor and a few items, but lose access to his shop. Siegward and Greirat questlines break",opens:[],closes:["ds3_greirat"]},
+]},
+{id:"ds3_090",text:"Buy Siegward's armor from Patches' shop — needed to free Siegward from the Irithyll Dungeon cell"},
+{id:"ds3_091",text:"Buy Siegbrau from Patches — give to Siegward at Cathedral well and Irithyll kitchen"},
+]},
+{id:"ds3_greirat",title:"Greirat of the Undead Settlement Questline",type:"missable",items:[
+{id:"ds3_092",text:"Free Greirat from High Wall cell — give him the Blue Tearstone Ring"},
+{id:"ds3_093",text:"Give Greirat Loretta's Bone — he mourns and goes on his first scavenge run to the Undead Settlement"},
+{id:"ds3_094",text:"Scavenge run 1 (Undead Settlement): he always returns safely with new stock"},
+{id:"ds3_c07",type:"choice",question:"Greirat's 2nd scavenge run (Irithyll) — how do you keep him alive?",options:[
+{id:"ds3_c07_siegward",label:"Have Siegward alive and in Irithyll",note:"Siegward saves Greirat. Most natural route if you've followed Siegward's questline",opens:[],closes:[]},
+{id:"ds3_c07_patches",label:"Tell Patches to go rescue him",note:"Patches saves Greirat (requires Patches alive and having talked to him about Greirat)",opens:[],closes:[]},
+{id:"ds3_c07_fail",label:"Neither — Greirat dies in Irithyll",note:"His ashes appear in Irithyll. Handmaiden can sell his stock if you give her his ashes",opens:[],closes:[]},
+]},
+{id:"ds3_095",text:"Scavenge run 3 (Lothric Castle): Greirat always dies here — you cannot save him. His ashes appear in Lothric Castle"},
+{id:"ds3_096",text:"Give Greirat's Ashes to Handmaiden — she sells his entire stock including rare consumables and a Titanite Slab"},
+]},
+{id:"ds3_lothric",title:"Lothric Castle & Grand Archives",type:"main",requires:["ds3_dungeon","ds3_irithyll"],items:[
+{id:"ds3_097",text:"Light Lothric Castle bonfire"},
+{id:"ds3_098",text:"Find Estus Shard #8 on a balcony in Lothric Castle"},
+{id:"ds3_099",text:"Find Undead Bone Shard #8 below the first wyvern perch"},
+{id:"ds3_100",text:"Defeat Dragonslayer Armour — animated suit of armor on the rooftop bridge"},
+{id:"ds3_101",text:"Enter Grand Archives"},
+{id:"ds3_102",text:"Dunk your head in the wax pool at the entrance — removes the curse from flying books"},
+{id:"ds3_103",text:"Find Estus Shard #9 in Grand Archives"},
+{id:"ds3_104",text:"Find Undead Bone Shard #9 in Grand Archives"},
+{id:"ds3_105",text:"Defeat three golden-winged knights on the rooftop — hard but drops Titanite Chunks"},
+{id:"ds3_106",text:"Defeat Twin Princes — Lorian (melee) and Lothric (magic); Lothric revives Lorian, kill Lothric last"},
+]},
+{id:"ds3_archdragon",title:"Archdragon Peak",type:"optional",requires:["ds3_dungeon"],items:[
+{id:"ds3_107",text:"Find the Path of the Dragon gesture on a corpse in Irithyll Dungeon (near meditating dragon statue)"},
+{id:"ds3_108",text:"Use Path of the Dragon gesture while sitting next to the dragon statue — teleported to Archdragon Peak"},
+{id:"ds3_109",text:"Light Archdragon Peak bonfire"},
+{id:"ds3_110",text:"Defeat Ancient Wyvern — use the shortcut path and plunge attack its head from above"},
+{id:"ds3_111",text:"Defeat Nameless King — two phase: King of the Storm (wyvern) then Nameless King himself; optional but one of the hardest bosses in the game"},
+{id:"ds3_112",text:"Dragon Communion covenant here — consume dragon hearts for breath spells"},
+]},
+{id:"ds3_consumed",title:"Consumed King's Garden & Untended Graves",type:"optional",requires:["ds3_lothric"],items:[
+{id:"ds3_113",text:"Descend into Consumed King's Garden from Lothric Castle"},
+{id:"ds3_114",text:"Defeat Oceiros, the Consumed King — he goes feral in phase 2"},
+{id:"ds3_115",text:"Find the secret passage behind Oceiros's arena"},
+{id:"ds3_116",text:"Enter the Untended Graves — a dark mirror version of Firelink Shrine"},
+{id:"ds3_117",text:"Defeat Champion Gundyr — much harder and more aggressive than the tutorial version"},
+{id:"ds3_118",text:"Find the Eyes of a Fire Keeper — required for the Betrayal/End of Fire ending (give to Fire Keeper in Firelink)"},
+]},
+{id:"ds3_kiln",title:"Kiln of the First Flame",type:"main",requires:["ds3_lothric"],items:[
+{id:"ds3_119",text:"Transport all four Lords of Cinder to their thrones in Firelink (Aldrich, Yhorm, Twin Princes, Abyss Watchers)"},
+{id:"ds3_120",text:"Emma appears and gives you the Basin of Vows — use it to travel to the Kiln"},
+{id:"ds3_121",text:"Defeat Soul of Cinder — two phase: cycles through weapon types, then mimics Gwyn from DS1"},
+{id:"ds3_c08",type:"choice",question:"Which ending do you choose?",options:[
+{id:"ds3_c08_link",label:"Link the First Flame",note:"Touch the bonfire — sacrifice yourself, extend the Age of Fire",opens:[],closes:[]},
+{id:"ds3_c08_hollow",label:"Lord of Hollows (Usurpation of Fire)",note:"Requires: 5 Dark Sigils from Yoel + Yuria alive + Anri's wedding completed. Walk away from the bonfire — Yuria narrates your ascension",opens:[],closes:[]},
+{id:"ds3_c08_end",label:"End of Fire (betrayal ending)",note:"Requires: Eyes of a Fire Keeper given to her. Summon Fire Keeper to the bonfire during Soul of Cinder fight. She snuffs the flame — do NOT attack her",opens:[],closes:[]},
+]},
+]},
+{id:"ds3_dlc1",title:"DLC: Ashes of Ariandel",type:"optional",items:[
+{id:"ds3_122",text:"Interact with the altar at Cleansing Chapel (Cathedral of the Deep) — meet Slave Knight Gael"},
+{id:"ds3_123",text:"Enter the Painted World of Ariandel"},
+{id:"ds3_124",text:"Light the Snowfield bonfire"},
+{id:"ds3_125",text:"Chop down the great rope bridge with an axe — it falls and becomes a ramp down"},
+{id:"ds3_126",text:"Light Ariandel Chapel bonfire"},
+{id:"ds3_127",text:"Navigate the basement — Vilhelm NPC invades here"},
+{id:"ds3_128",text:"Defeat Champion's Gravetender & Gravetender Greatwolf (optional)"},
+{id:"ds3_129",text:"Find Sister Friede in the chapel — talk to her twice before she turns hostile"},
+{id:"ds3_130",text:"Defeat Sister Friede & Father Ariandel — three phases: Friede → Ariandel+Friede → Blackflame Friede"},
+{id:"ds3_131",text:"Receive Captain's Ashes — give to Handmaiden for new items including the Earth Seeker"},
+]},
+{id:"ds3_dlc2",title:"DLC: The Ringed City",type:"optional",requires:["ds3_dlc1"],items:[
+{id:"ds3_132",text:"Access via Kiln bonfire (after Soul of Cinder) OR via the end of Ashes of Ariandel"},
+{id:"ds3_133",text:"Enter the Dreg Heap — the end of the world, all things piled here"},
+{id:"ds3_134",text:"Defeat Demon in Pain & Demon from Below, then Demon Prince — three-phase demon fight"},
+{id:"ds3_135",text:"Enter the Ringed City"},
+{id:"ds3_136",text:"Light Ringed City Streets bonfire"},
+{id:"ds3_137",text:"Find Lapp (amnesiac Patches) — help him remember who he is across multiple encounters"},
+{id:"ds3_138",text:"Find Shira, Knight of Filianore — she gives a quest to kill Midir and Gael"},
+{id:"ds3_139",text:"Defeat Halflight, Spear of the Church — can be a PvP invader or NPC"},
+{id:"ds3_140",text:"Enter Filianore's Rest"},
+{id:"ds3_141",text:"Defeat Darkeater Midir (optional) — hidden in a pit under the broken bridge; plunge attack his head"},
+{id:"ds3_142",text:"Find and defeat Slave Knight Gael — the final boss of the entire Dark Souls trilogy"},
+]},
+{id:"ds3_upgrades",title:"Upgrades & Collectibles",type:"missable",items:[
+{id:"ds3_143",text:"Estus Shards (11 total — max 15 flasks, split freely between Estus and Ashen Estus): High Wall ×1, Settlement ×1, Road of Sacrifices ×1, Cathedral ×1, Farron Keep ×1, Irithyll ×1, Irithyll Dungeon ×1, Lothric Castle ×1, Grand Archives ×1, Consumed King's Garden ×1, Smouldering Lake ×1"},
+{id:"ds3_144",text:"Undead Bone Shards (10 total — each upgrades healing per Estus sip): Cemetery ×1, Settlement ×1, Farron Keep ×1, Cathedral ×1, Catacombs ×1, Smouldering Lake ×1, Irithyll ×1, Profaned Capital ×1, Lothric Castle ×1, Grand Archives ×1"},
+{id:"ds3_145",text:"Coals for Andre (unlock infusion types): Sage's Coal (Road of Sacrifices), Farron Coal (Farron Keep), Giant's Coal (Anor Londo), Profaned Coal (Profaned Capital)"},
+{id:"ds3_146",text:"Titanite Slabs: Stray Demon (Farron area), Siegward questline reward, Twin Princes drop, Greirat 3rd run ashes, rare drops from Crystal Lizards in Grand Archives"},
+{id:"ds3_147",text:"Boss soul transposition: give boss souls to Ludleth on his throne — unique weapons and rings"},
+]},
+]},
+{id:"bb",label:"Bloodborne",shortLabel:"BB",accent:"#8c3a2e",bg:"#0d0a0e",sections:[
+{id:"bb_clinic",title:"Iosefka's Clinic & Hunter's Dream",type:"main",items:[
+{id:"bb_001",text:"Wake up in Iosefka's Clinic — receive the Hunter's Mark"},
+{id:"bb_002",text:"Get attacked by the werewolf — first death triggers the Hunter's Dream"},
+{id:"bb_003",text:"In the Hunter's Dream: talk to Gehrman, pick up your starting weapons from the workshop"},
+{id:"bb_004",text:"Pick starting weapon: Saw Cleaver (best all-round), Hunter Axe (strength), or Threaded Cane (skill)"},
+{id:"bb_005",text:"Pick starting gun: Hunter Pistol (fast parry) or Hunter Blunderbuss (wide spread)"},
+{id:"bb_006",text:"Return to Iosefka's Clinic — go through the back door into Yharnam"},
+{id:"bb_007",text:"Gain 1 Insight (by seeing a boss or using Madman's Knowledge) — the Plain Doll wakes up and can level you"},
+]},
+{id:"bb_central",title:"Central Yharnam",type:"main",requires:["bb_clinic"],items:[
+{id:"bb_008",text:"Light Central Yharnam lamp (shortcut gate near Iosefka's Clinic)"},
+{id:"bb_009",text:"Learn to rally — regain HP by hitting enemies immediately after taking damage"},
+{id:"bb_010",text:"Find the first window NPC (man with top hat)"},
+{id:"bb_c01",type:"choice",question:"Where do you send window NPCs you rescue?",options:[
+{id:"bb_c01_cathedral",label:"Send them to Oedon Chapel (Cathedral Ward)",note:"Safer destination — they survive and provide services. Recommended for Arianna and Adella",opens:["bb_oedon_npcs"],closes:[]},
+{id:"bb_c01_iosefka",label:"Send them to Iosefka's Clinic",note:"They disappear and are turned into blue elixirs — you gain Insight. Arianna sent here gives no umbilical cord",opens:[],closes:["bb_oedon_npcs"]},
+]},
+{id:"bb_011",text:"Light Tomb of Oedon lamp"},
+{id:"bb_012",text:"Talk to Alfred near the chapel — he tells you about the Healing Church"},
+{id:"bb_013",text:"Defeat Cleric Beast on the Oedon Chapel bridge (optional but drops Sword Hunter Badge and gives Insight)"},
+{id:"bb_014",text:"Defeat Father Gascoigne — use the music box (from his daughter) to stagger him in phase 1"},
+{id:"bb_015",text:"After Gascoigne: check the rooftop house with his daughter — she is looking for her parents"},
+{id:"bb_c02",type:"choice",question:"What do you do with Gascoigne's daughter?",options:[
+{id:"bb_c02_brooch",label:"Give her the Red Jeweled Brooch (from Gascoigne's wife's corpse)",note:"She jumps to her death looking for her grandmother. Returns the Oedon Writhe rune. Tragic.",opens:[],closes:[]},
+{id:"bb_c02_nothing",label:"Tell her to wait / don't give the brooch",note:"She waits. Later she goes looking herself and dies off-screen. No rune.",opens:[],closes:[]},
+]},
+]},
+{id:"bb_oedon_npcs",title:"Oedon Chapel Survivors",type:"optional",items:[
+{id:"bb_016",text:"Find Arianna at her door in Cathedral Ward — send her to Oedon Chapel"},
+{id:"bb_017",text:"Find Adella the Nun in Hypogean Gaol (Yahar'gul, pre-ROM) — send her to Oedon Chapel"},
+{id:"bb_018",text:"Find the Skeptic's Burned Man at his window — send him to Oedon Chapel or clinic"},
+{id:"bb_019",text:"Find the Older Brother NPC (Central Yharnam window) — send him to Oedon Chapel"},
+{id:"bb_020",text:"After ROM: visit Oedon Chapel — Arianna gives birth to a Great One's child"},
+{id:"bb_021",text:"Kill Arianna's child for a Kin Coldblood and a piece of her umbilical cord (Umbilical Cord #2)"},
+{id:"bb_022",text:"WARNING: if you use Arianna's blood (her vial) too many times, Adella kills Arianna"},
+]},
+{id:"bb_cathedral",title:"Cathedral Ward",type:"main",requires:["bb_central"],items:[
+{id:"bb_023",text:"Light Cathedral Ward lamp"},
+{id:"bb_024",text:"Talk to Eileen the Crow near the Cathedral — Crow Hunter Badge, starts her questline"},
+{id:"bb_025",text:"Explore Healing Church Workshop (tower to the right) — good loot, Heir rune at the very top"},
+{id:"bb_026",text:"Find the Abandoned Old Workshop at the bottom of the Healing Church tower — Cord of the Eye rune and Umbilical Cord #4"},
+{id:"bb_027",text:"Open the shortcut gate near the two giant pigs — connects back to Central Yharnam"},
+{id:"bb_028",text:"Defeat Blood-Starved Beast — weak to fire (Molotov Cocktails or Fire Paper), drops Pthumeru Chalice and Hunter Chief Emblem"},
+{id:"bb_029",text:"Use Hunter Chief Emblem (10,000 Blood Echoes) to open the Cathedral Ward gate OR find the emblem"},
+]},
+{id:"bb_eileen",title:"Eileen the Crow Questline",type:"missable",items:[
+{id:"bb_030",text:"Meet Eileen in Cathedral Ward — she gives the Shake Off Cape gesture"},
+{id:"bb_031",text:"After Father Gascoigne: find Eileen near the Tomb of Oedon lamp — she is hunting Henryk"},
+{id:"bb_032",text:"Summon Eileen to help fight Henryk at the Tomb of Oedon lamp (or fight him alone)"},
+{id:"bb_c03",type:"choice",question:"Eileen vs Henryk — how does this go?",options:[
+{id:"bb_c03_help",label:"Help Eileen fight Henryk (summon her)",note:"Henryk dies, Eileen survives — questline continues toward the Grand Cathedral",opens:["bb_eileen_end"],closes:[]},
+{id:"bb_c03_alone",label:"Fight Henryk alone without Eileen",note:"Henryk dies, Eileen survives and is impressed — questline continues",opens:["bb_eileen_end"],closes:[]},
+{id:"bb_c03_fail",label:"Eileen dies to Henryk",note:"Questline ends here — no further reward",opens:[],closes:["bb_eileen_end"]},
+]},
+]},
+{id:"bb_eileen_end",title:"Eileen — Grand Cathedral Conclusion",type:"missable",items:[
+{id:"bb_033",text:"Before killing Vicar Amelia: find Eileen wounded near the Grand Cathedral entrance"},
+{id:"bb_034",text:"Help Eileen fight the NPC hunter attacking her (or she dies)"},
+{id:"bb_035",text:"After the fight: talk to Eileen inside the Grand Cathedral — she gives you the Crow Hunter Badge"},
+{id:"bb_036",text:"If Eileen dies here: loot her corpse for the badge"},
+]},
+{id:"bb_old_yharnam",title:"Old Yharnam",type:"optional",requires:["bb_cathedral"],items:[
+{id:"bb_037",text:"Descend into Old Yharnam — quarantined by the Healing Church"},
+{id:"bb_c04",type:"choice",question:"How do you handle Djura on the gatling gun tower?",options:[
+{id:"bb_c04_peaceful",label:"Reach the rooftops without attacking beasts",note:"Djura stands down and gives you the Powder Keg Hunter Badge peacefully. He becomes a friendly NPC.",opens:[],closes:[]},
+{id:"bb_c04_kill",label:"Kill Djura and his ally",note:"Same badge as a drop. No friendly NPC.",opens:[],closes:[]},
+]},
+{id:"bb_038",text:"Light Graveyard of the Darkbeast lamp"},
+{id:"bb_039",text:"Defeat Darkbeast Paarl (optional) — opens a shortcut gate to Yahar'gul from Cathedral Ward"},
+{id:"bb_040",text:"Find the Rifle Spear and other unique trick weapons in Old Yharnam"},
+]},
+{id:"bb_hemwick",title:"Hemwick Charnel Lane & Vicar Amelia",type:"main",requires:["bb_cathedral"],items:[
+{id:"bb_041",text:"Travel through Cathedral Ward upper area to reach Hemwick Charnel Lane"},
+{id:"bb_042",text:"Light Hemwick Charnel Lane lamp"},
+{id:"bb_043",text:"Defeat Witch of Hemwick — find and kill the two hidden witches among the summoned enemies"},
+{id:"bb_044",text:"Unlock the Rune Workshop Tool — allows equipping Caryll Runes (found in Witch of Hemwick area)"},
+{id:"bb_045",text:"Defeat Vicar Amelia in the Grand Cathedral — armored wolf boss, use Bolt Paper or Fire Paper"},
+{id:"bb_046",text:"Interact with the altar after Amelia — watch the password cutscene, triggers night cycle"},
+{id:"bb_047",text:"The world changes: blood moon effects begin, new NPCs become accessible or hostile"},
+]},
+{id:"bb_forbidden",title:"Forbidden Woods",type:"main",requires:["bb_hemwick"],items:[
+{id:"bb_048",text:"Use the Lunarium Key from the altar area to open the path to Forbidden Woods"},
+{id:"bb_049",text:"Light Forbidden Woods lamp"},
+{id:"bb_050",text:"Navigate the village — snake ball enemies, fire is very effective"},
+{id:"bb_051",text:"Find the secret back path to Iosefka's Clinic — Cainhurst Summons is here"},
+{id:"bb_c05",type:"choice",question:"Do you enter Iosefka's Clinic back door?",options:[
+{id:"bb_c05_enter",label:"Enter the clinic back area",note:"Collect the Cainhurst Summons (needed for Cainhurst Castle). You can also send NPCs here for Insight — they are transformed into blue elixirs",opens:["bb_cainhurst"],closes:[]},
+{id:"bb_c05_skip",label:"Skip the clinic back area",note:"No Cainhurst this playthrough unless you find another way (there is no other way — Cainhurst requires the Summons)",opens:[],closes:["bb_cainhurst"]},
+]},
+{id:"bb_052",text:"Defeat Shadows of Yharnam — three-boss fight at the end of the woods"},
+]},
+{id:"bb_byrgenwerth",title:"Byrgenwerth",type:"main",requires:["bb_forbidden"],items:[
+{id:"bb_053",text:"Light Byrgenwerth lamp"},
+{id:"bb_054",text:"Talk to Master Willem on the balcony — he points to the lake"},
+{id:"bb_055",text:"Find the Eye Rune in the lecture building"},
+{id:"bb_056",text:"Descend to the lake — ROM is in the water"},
+{id:"bb_057",text:"Defeat ROM, the Vacuous Spider — kill the small spiders or focus ROM; she teleports"},
+{id:"bb_058",text:"ROM's death triggers the blood moon — the world changes permanently"},
+]},
+{id:"bb_yaharghul",title:"Yahar'gul, Unseen Village",type:"main",requires:["bb_byrgenwerth"],items:[
+{id:"bb_059",text:"Optional pre-ROM: get captured by a Snatcher (one-shot enemy in Cathedral Ward) — wakes in Hypogean Gaol, find Adella and a lamp"},
+{id:"bb_060",text:"Post-ROM: enter Yahar'gul via Cathedral Ward shortcut (if Paarl was killed) or the main path"},
+{id:"bb_061",text:"Light Yahar'gul Chapel lamp"},
+{id:"bb_062",text:"Kill the bell-ringing witches on the balconies first — they cause enemies to respawn infinitely"},
+{id:"bb_063",text:"Find the Eye Pendant in Yahar'gul — opens one of the Brain of Mensis mechanisms later"},
+{id:"bb_064",text:"Defeat The One Reborn — large mass of bodies, kill the balcony witches first"},
+]},
+{id:"bb_cainhurst",title:"Forsaken Castle Cainhurst",type:"optional",items:[
+{id:"bb_065",text:"Have the Cainhurst Summons from Iosefka's Clinic back door"},
+{id:"bb_066",text:"Use the summons at the Hemwick Charnel Lane area — a carriage arrives at night"},
+{id:"bb_067",text:"Light Forsaken Castle Cainhurst lamp"},
+{id:"bb_068",text:"Navigate the castle — frozen undead and Cainhurst Knights"},
+{id:"bb_069",text:"Defeat Martyr Logarius — bait his skull storm then attack; tricky ranged scythe boss"},
+{id:"bb_070",text:"Receive the Crown of Illusions — wear it near the throne to reveal Annalise, Queen of the Vilebloods"},
+{id:"bb_c06",type:"choice",question:"What do you do with Annalise and Alfred?",options:[
+{id:"bb_c06_vileblood",label:"Join the Vilebloods covenant",note:"Annalise stays alive. Alfred will come later and kill her (if his questline is active).",opens:["bb_alfred"],closes:[]},
+{id:"bb_c06_alfred",label:"Give Alfred the Unopened Summons (from Cainhurst)",note:"Alfred uses it to find and kill Annalise. He dies happy. You receive the Wheel Hunter Badge.",opens:["bb_alfred"],closes:[]},
+{id:"bb_c06_ignore",label:"Leave without joining or giving Alfred anything",note:"Annalise stays alive, Alfred's questline doesn't progress to conclusion.",opens:[],closes:[]},
+]},
+]},
+{id:"bb_alfred",title:"Alfred Questline",type:"missable",items:[
+{id:"bb_071",text:"Meet Alfred near the Cathedral Ward — he is hunting the Vilebloods"},
+{id:"bb_072",text:"Give Alfred the Unopened Summons from Cainhurst — he rushes there"},
+{id:"bb_073",text:"Find Alfred at Cainhurst after he kills Annalise — he gives you the Wheel Hunter Badge"},
+{id:"bb_074",text:"Find Alfred dying nearby — exhaust his dialogue"},
+{id:"bb_075",text:"Optional: give Alfred absolution at the Fountain in Cathedral Ward to revive Annalise"},
+]},
+{id:"bb_frontier",title:"Nightmare Frontier",type:"optional",requires:["bb_cathedral"],items:[
+{id:"bb_076",text:"Get grabbed by an Amygdala on the path after Cathedral Ward (post-blood moon) or find the shortcut lamp"},
+{id:"bb_077",text:"Light Nightmare Frontier lamp"},
+{id:"bb_078",text:"Navigate the poison lake — equip the Iosefka's Blood Vial for anti-toxin"},
+{id:"bb_079",text:"Find the Lecture Building Key — opens the main Lecture Building entrance"},
+{id:"bb_080",text:"Defeat Amygdala — target its arms and head with bolt or fire"},
+{id:"bb_081",text:"Receive the Ailing Loran Chalice"},
+]},
+{id:"bb_mensis",title:"Nightmare of Mensis",type:"main",requires:["bb_yaharghul"],items:[
+{id:"bb_082",text:"Enter the Lecture Building (1F) — navigate the student-filled halls"},
+{id:"bb_083",text:"Light Lecture Building 1F lamp"},
+{id:"bb_084",text:"Enter Lecture Building 2F — another lamp"},
+{id:"bb_085",text:"Enter Nightmare of Mensis from the 2F door"},
+{id:"bb_086",text:"Light Mergo's Loft lamp"},
+{id:"bb_087",text:"The giant Brain of Mensis kills you with its gaze — equip the Mensis Cage to lure it out, or use Bold Hunter's Mark to escape"},
+{id:"bb_088",text:"Shoot the chain holding the brain — it falls into the pit and becomes harmless, rewards the Moon rune"},
+{id:"bb_089",text:"Defeat Micolash, Host of the Nightmare — chase him through the two cages, he uses A Call Beyond"},
+{id:"bb_090",text:"Defeat Mergo's Wet Nurse — large shadow boss with multiple scythes"},
+{id:"bb_091",text:"Receive Mergo's Umbilical Cord (Umbilical Cord #1)"},
+]},
+{id:"bb_umbilical",title:"Umbilical Cords — True Ending Prep",type:"missable",items:[
+{id:"bb_092",text:"Umbilical Cord #1: dropped by Mergo's Wet Nurse"},
+{id:"bb_093",text:"Umbilical Cord #2: dropped by Arianna's stillborn child (Oedon Chapel, post-ROM) — requires sending Arianna to Cathedral Ward"},
+{id:"bb_094",text:"Umbilical Cord #3: found in the Abandoned Old Workshop chest (bottom of Healing Church tower)"},
+{id:"bb_095",text:"Umbilical Cord #4: dropped by Iosefka herself — kill her after the blood moon (back door of clinic)"},
+{id:"bb_096",text:"You only need 3 of the 4 cords — consume them before fighting Gehrman for the true ending"},
+]},
+{id:"bb_endgame",title:"Hunter's Dream — Endgame",type:"main",requires:["bb_mensis"],items:[
+{id:"bb_097",text:"Return to Hunter's Dream — it is on fire, Gehrman sits in his chair"},
+{id:"bb_098",text:"Talk to Gehrman — he offers to free you from the dream"},
+{id:"bb_c07",type:"choice",question:"Which ending do you choose?",options:[
+{id:"bb_c07_submit",label:"Ending 1 — Yharnam Sunrise (submit to Gehrman)",note:"Let Gehrman kill you — wake up in the real world as a normal person. The dream ends.",opens:[],closes:[]},
+{id:"bb_c07_refuse",label:"Ending 2 — Honoring Wishes (refuse Gehrman)",note:"Fight Gehrman. After winning, the Moon Presence descends — you submit to it and become the next dreamer.",opens:[],closes:[]},
+{id:"bb_c07_true",label:"Ending 3 — Childhood's Beginning (true ending)",note:"Requires consuming 3+ Umbilical Cords before this fight. Fight Gehrman, then resist the Moon Presence — you become a Great One infant.",opens:[],closes:[]},
+]},
+]},
+{id:"bb_dlc",title:"DLC: The Old Hunters",type:"optional",items:[
+{id:"bb_099",text:"After blood moon: find the Madman near Cathedral Ward — he gives you the Eye of a Blood-Drunk Hunter"},
+{id:"bb_100",text:"An Amygdala grabs you and takes you to Hunter's Nightmare"},
+{id:"bb_101",text:"Light Hunter's Nightmare lamp"},
+{id:"bb_102",text:"Navigate the bloody flooded version of Central Yharnam"},
+{id:"bb_103",text:"Find Simon the Harrowed — he is searching for the Holy Moonlight Sword"},
+{id:"bb_104",text:"Find Ludwig's skull — show it to Ludwig after the boss fight for a peaceful death scene (and the Holy Moonlight Sword)"},
+{id:"bb_105",text:"Defeat Ludwig, the Accursed / Holy Blade — phase 1: beast (use fire), phase 2: knight"},
+{id:"bb_106",text:"Enter the Research Hall — twisted hospital with patients on the ceiling"},
+{id:"bb_107",text:"Find the Underground Corpse Pile lamp"},
+{id:"bb_108",text:"Defeat Living Failures — group of failed Great One experiments, dodge their meteor shower"},
+{id:"bb_109",text:"Defeat Lady Maria of the Astral Clocktower — three phases: sword → fire → blood; one of the best boss fights in FromSoft history"},
+{id:"bb_110",text:"Receive the Astral Clocktower Key — opens the way to Fishing Hamlet"},
+{id:"bb_111",text:"Light Fishing Hamlet lamp"},
+{id:"bb_112",text:"Find Valtr, Master of the League — gives the Impurity rune for the League covenant"},
+{id:"bb_113",text:"Optional: find the Rakuyo weapon — kill two giant sharks in the well (both must die quickly)"},
+{id:"bb_114",text:"Defeat Orphan of Kos — hatches from the beached Kos corpse, two phases; one of the hardest bosses in the game"},
+{id:"bb_115",text:"After Orphan: find Simon dying nearby — he gives you the Bowblade and a Blood Gem"},
+]},
+{id:"bb_chalices",title:"Chalice Dungeons",type:"optional",items:[
+{id:"bb_116",text:"Pthumeru Chalice (starter) — procedurally generated, learn the layout"},
+{id:"bb_117",text:"Central Pthumeru Chalice — fixed layout, drops Radial Bloodstone Chunks"},
+{id:"bb_118",text:"Lower Pthumeru Chalice — harder version"},
+{id:"bb_119",text:"Ailing Loran Chalice (from Nightmare Frontier) — fire and arcane gems"},
+{id:"bb_120",text:"Hintertomb Chalice — optional branch, poison gems"},
+{id:"bb_121",text:"Defiled Chalice (Cursed Pthumeru) — your max HP is permanently halved; hardest dungeon"},
+{id:"bb_122",text:"Defiled bosses: Watchdog of the Old Lords and Defiled Amygdala (with half HP — brutal)"},
+{id:"bb_123",text:"Great Pthumeru Ihyll Chalice — leads to the final chalice boss"},
+{id:"bb_124",text:"Defeat Yharnam, Pthumerian Queen — final chalice dungeon boss, dodge her blood attacks"},
+{id:"bb_125",text:"Blood Rock: found in deepest chalice dungeons — upgrades weapons to +10 (max)"},
+]},
+{id:"bb_upgrades",title:"Upgrades & Collectibles",type:"missable",items:[
+{id:"bb_126",text:"Weapon upgrade path: +1→+3 (Bloodstone Shards) → +4→+6 (Twin Bloodstone Shards) → +7→+9 (Bloodstone Chunks) → +10 (Blood Rock)"},
+{id:"bb_127",text:"Bloodstone Chunks: farmable from Snake Ball enemies in Mergo's Loft Middle — stock up before going to +9"},
+{id:"bb_128",text:"Blood Rock: one guaranteed in Mergo's Loft, one from Pthumeru Ihyll chalice, rare drop from Winter Lanterns"},
+{id:"bb_129",text:"Caryll Runes: found throughout the world — equip via the Rune Workshop Tool (from Hemwick)"},
+{id:"bb_130",text:"Hunter Tools (arcane weapons): Augur of Ebrietas, A Call Beyond, Choir Bell, Executioner's Gloves — buy from Bath Messengers after finding the right badges"},
+{id:"bb_131",text:"Insight shop: spend 10 Insight to buy unique items from the Bath Messengers in Hunter's Dream"},
+]},
+]},
+{id:"sekiro",label:"Sekiro",shortLabel:"Sekiro",accent:"#c0c8a8",bg:"#080a08",sections:[
+{id:"sek_prologue",title:"Prologue & Dilapidated Temple",type:"main",items:[
+{id:"sek_001",text:"Wake up as Wolf — tutorial on Deflect and Deathblow mechanics"},
+{id:"sek_002",text:"Rescue the Divine Heir Kuro — but Genichiro cuts off your arm and takes him"},
+{id:"sek_003",text:"Wake up in the sculptor's hut — the Sculptor has attached the Shinobi Prosthetic arm"},
+{id:"sek_004",text:"Talk to the Sculptor — he explains Resurrection and the cost of using it (Dragon Rot)"},
+{id:"sek_005",text:"Pick up the Kusabimaru katana from the shrine"},
+{id:"sek_006",text:"Light the Dilapidated Temple idol — your main hub for the whole game"},
+{id:"sek_007",text:"Find Hanbei the Undying near the temple — unlimited combat practice, he cannot die"},
+{id:"sek_008",text:"Give sake to the Sculptor for lore about his past (Unrefined Sake, Dragonspring Sake)"},
+]},
+{id:"sek_outskirts",title:"Ashina Outskirts",type:"main",requires:["sek_prologue"],items:[
+{id:"sek_009",text:"Light Ashina Outskirts – Gate Path idol"},
+{id:"sek_010",text:"Use stealth to thin out enemy patrols — Shinobi Deathblow from above or behind"},
+{id:"sek_011",text:"Defeat General Naomori Kawarada (mini-boss) — practice Mikiri Counter on his thrust attacks"},
+{id:"sek_012",text:"Light Outskirts Wall – Gate Path idol"},
+{id:"sek_013",text:"Defeat Chained Ogre — grab-heavy enemy; set him on fire with the Flame Vent prosthetic tool"},
+{id:"sek_014",text:"Find the Flame Vent prosthetic tool in the area near the Chained Ogre"},
+{id:"sek_015",text:"Light Outskirts Wall – Stairway idol"},
+{id:"sek_016",text:"Defeat General Tenzen Yamauchi (mini-boss)"},
+{id:"sek_017",text:"Talk to the old woman near Gyoubu's arena after clearing the area — she gives the Young Lord's Bell Charm"},
+{id:"sek_018",text:"Defeat Gyoubu Masataka Oniwa — mounted cavalry boss; grapple to him to close distance"},
+{id:"sek_019",text:"Receive the Mechanical Barrel — bring to the Sculptor for a new prosthetic slot"},
+]},
+{id:"sek_hirata",title:"Hirata Estate (Past Memory)",type:"optional",requires:["sek_outskirts"],items:[
+{id:"sek_020",text:"Offer the Young Lord's Bell Charm at the Buddha statue in the Dilapidated Temple — enter the memory"},
+{id:"sek_021",text:"Light Estate Path idol"},
+{id:"sek_022",text:"Defeat Shinobi Hunter Enshin of Misen (mini-boss) — sweep-heavy, jump to avoid sweeps"},
+{id:"sek_023",text:"Defeat Juzou the Drunkard — use the NPC summon to distract him, kill his men first while he drinks"},
+{id:"sek_024",text:"Light Hirata Estate – Main Hall idol"},
+{id:"sek_025",text:"Defeat Lady Butterfly — two phases: acrobatic melee → needle throws and phantom summons"},
+{id:"sek_026",text:"Receive the Sakura Droplet — increases your Resurrection use count permanently"},
+{id:"sek_027",text:"Second visit (Purification ending only): offer the Father's Bell Charm — a harder version of the estate with Owl as the boss"},
+]},
+{id:"sek_castle",title:"Ashina Castle",type:"main",requires:["sek_outskirts"],items:[
+{id:"sek_028",text:"Light Ashina Castle idol"},
+{id:"sek_029",text:"Eavesdrop on Genichiro and his general through the sliding door"},
+{id:"sek_030",text:"Find Kuro's room — talk to him to learn about the Dragon's Heritage and the Immortal Severance ritual"},
+{id:"sek_031",text:"Talk to Emma the physician — she treats Kuro and is key to multiple endings"},
+{id:"sek_032",text:"Find the Shuriken Wheel prosthetic tool near the castle water wheel"},
+{id:"sek_033",text:"Defeat Blazing Bull (mini-boss) — use Flame Vent to panic it, stay behind it"},
+{id:"sek_034",text:"Light Upper Tower – Antechamber idol"},
+{id:"sek_035",text:"Defeat General Kuranosuke Matsumoto (mini-boss)"},
+{id:"sek_036",text:"Find Tengu of Ashina (actually Isshin in disguise) — he gives the Shinobi Esoteric Text if you kill 10 red-eyed enemies"},
+{id:"sek_037",text:"Light Upper Tower – Kuro's Room idol"},
+{id:"sek_038",text:"Light Ashina Castle Top idol"},
+{id:"sek_039",text:"Defeat Seven Ashina Spears – Shikibu Toshikatsu Yamauchi on the rooftop (mini-boss)"},
+{id:"sek_040",text:"Defeat Genichiro Ashina — three phases: bow → lightning (deflect it back) → Way of Tomoe"},
+{id:"sek_041",text:"Receive the Black Mortal Blade — story item, cannot be used as a weapon yet"},
+{id:"sek_042",text:"Return to Kuro — he tasks you with gathering the three ritual items"},
+]},
+{id:"sek_senpou",title:"Senpou Temple, Mt. Kongo",type:"main",requires:["sek_castle"],items:[
+{id:"sek_043",text:"Enter Senpou Temple via the Abandoned Dungeon passage or high path from Ashina Outskirts"},
+{id:"sek_044",text:"Light Senpou Temple, Mt. Kongo idol"},
+{id:"sek_045",text:"Talk to the monks — they speak of the Immortal Severance ritual and their experiments"},
+{id:"sek_046",text:"Defeat Long-arm Centipede Giraffe (mini-boss) — deflect all its rapid attacks relentlessly"},
+{id:"sek_047",text:"Find the kite — use a Ceramic Shard to startle the kite-flying monk, grapple to the kite to cross the valley"},
+{id:"sek_048",text:"Light Temple Grounds idol"},
+{id:"sek_049",text:"Eavesdrop on the Head Priest at the inner sanctum — reveals the truth about Senpou's child experiments"},
+{id:"sek_050",text:"Defeat Armored Warrior (mini-boss) — cannot be killed by damage; knock him off the bridge"},
+{id:"sek_051",text:"Enter the Halls of Illusion — four Folding Screen Monkeys must be caught"},
+{id:"sek_052",text:"Defeat Folding Screen Monkeys — one is visible, catch the others using the environment: bell silences sound monkey, dark room hides sight monkey"},
+{id:"sek_053",text:"Receive the Mortal Blade — the real blade that can kill immortals, drawn from your own stomach"},
+{id:"sek_054",text:"Ring the Immortal Severance Temple Bell — one of three ritual requirements"},
+{id:"sek_055",text:"Find the Divine Child of Rejuvenation in the inner sanctum — give her Rice for lore and the Return ending path"},
+]},
+{id:"sek_valley",title:"Sunken Valley & Gun Fort",type:"main",requires:["sek_castle"],items:[
+{id:"sek_056",text:"Descend into Sunken Valley from Ashina Castle"},
+{id:"sek_057",text:"Light Under-Shrine Valley idol"},
+{id:"sek_058",text:"Defeat Snake Eyes Shirafuji (mini-boss) — use Loaded Umbrella to deflect her rifle shots"},
+{id:"sek_059",text:"Navigate the caverns — a giant snake must be avoided or distracted with firecrackers"},
+{id:"sek_060",text:"Light Sunken Valley Cavern idol"},
+{id:"sek_061",text:"Defeat Long-arm Centipede Sen'un (mini-boss in the cave)"},
+{id:"sek_062",text:"Light Gun Fort idol — riflemen everywhere, use grapple and stealth"},
+{id:"sek_063",text:"Defeat Guardian Ape in the valley below — phase 1: ape body; phase 2: headless ape with sword; use Mortal Blade to kill phase 2"},
+{id:"sek_064",text:"Receive the Lotus of the Palace — one of three ritual items"},
+{id:"sek_065",text:"Light Poison Pool idol — find Snake Eyes Shirahagi (mini-boss) in the poison pool"},
+{id:"sek_066",text:"Defeat Snake Eyes Shirahagi — same as Shirafuji, use Umbrella"},
+]},
+{id:"sek_depths",title:"Ashina Depths & Mibu Village",type:"main",requires:["sek_valley"],items:[
+{id:"sek_067",text:"Enter Ashina Depths from the Guardian Ape's boss area"},
+{id:"sek_068",text:"Light Hidden Forest idol"},
+{id:"sek_069",text:"Navigate Hidden Forest — spirit monkeys cause hallucinations (use Snap Seeds to clear immediately)"},
+{id:"sek_070",text:"Defeat Tokujiro the Glutton (mini-boss) — has a friend monkey, use Puppeteer Ninjutsu on the monkey"},
+{id:"sek_071",text:"Defeat Guardian Ape's mate — a duo fight; both are headless in phase 2"},
+{id:"sek_072",text:"Light Mibu Village idol"},
+{id:"sek_073",text:"The possessed villagers whisper 'more sake' — give sake to the woman at the water mill for dialogue"},
+{id:"sek_074",text:"Defeat O'Rin of the Water (mini-boss) — aggressive ghost on the bridge, high posture damage with charged strikes"},
+{id:"sek_075",text:"Light Water Mill idol"},
+{id:"sek_076",text:"Defeat Corrupted Monk (illusion version) — use Snap Seeds to instantly reveal her true form, then deathblow"},
+{id:"sek_077",text:"Receive the Shelter Stone — one of three ritual items"},
+]},
+{id:"sek_fountainhead",title:"Fountainhead Palace",type:"main",requires:["sek_depths","sek_senpou"],items:[
+{id:"sek_078",text:"Travel to Fountainhead Palace — accessed after gathering all three ritual items"},
+{id:"sek_079",text:"Light Fountainhead Palace idol"},
+{id:"sek_080",text:"Navigate the flooded palace — Okami warriors and noble enemies"},
+{id:"sek_081",text:"Defeat Sakura Bull of the Palace (mini-boss) — use fire, stay mobile"},
+{id:"sek_082",text:"Talk to the Pot Nobles — trade Treasure Carp Scales for key items including the Truly Precious Bait"},
+{id:"sek_c01",type:"choice",question:"Which Pot Noble do you feed the Truly Precious Bait to?",options:[
+{id:"sek_c01_haru",label:"Feed Harunaga (Fountainhead Palace)",note:"Harunaga survives and gives you a Lapis Lazuli (rare upgrade material). Koremori dies.",opens:[],closes:[]},
+{id:"sek_c01_kore",label:"Feed Koremori (Hirata Estate memory)",note:"Koremori survives. Harunaga dies.",opens:[],closes:[]},
+]},
+{id:"sek_083",text:"Defeat Palace Noble Harunaga (mini-boss) — his ringing bell summons enemies"},
+{id:"sek_084",text:"Defeat Corrupted Monk (true form) — three-phase fight, use Bloodsmoke Ninjutsu for free deathblows"},
+{id:"sek_085",text:"Enter the Divine Realm"},
+{id:"sek_086",text:"Defeat Divine Dragon — use the tree branches to summon lightning, redirect to the dragon"},
+{id:"sek_087",text:"Receive the Divine Dragon's Tears — the final ritual item"},
+]},
+{id:"sek_invaded",title:"Invaded Ashina — Final Stretch",type:"main",requires:["sek_fountainhead"],items:[
+{id:"sek_088",text:"Return to Ashina — the castle is under siege, everything is on fire"},
+{id:"sek_089",text:"Light the Ashina Castle idol (invaded version)"},
+{id:"sek_090",text:"Defeat Lone Shadow Masanaga the Spear-Bearer (mini-boss in the courtyard)"},
+{id:"sek_091",text:"Defeat Shigekichi of the Red Guard (mini-boss)"},
+{id:"sek_092",text:"Light Upper Tower – Antechamber idol (invaded)"},
+{id:"sek_093",text:"Defeat Genichiro Ashina on the castle rooftop — he uses the Black Mortal Blade and transforms into Isshin"},
+{id:"sek_094",text:"Defeat Isshin, the Sword Saint — three phases: spear → lightning spear → wind slash; arguably the best boss in FromSoft history"},
+]},
+{id:"sek_endings",title:"Endings",type:"main",requires:["sek_invaded"],items:[
+{id:"sek_c02",type:"choice",question:"Which ending do you take?",options:[
+{id:"sek_c02_shura",label:"Shura (earliest choice — missable)",note:"When Owl asks you to betray Kuro at the castle rooftop (mid-game), agree. Fight Emma then Isshin Ashina. Bad ending — Wolf becomes the demon Shura.",opens:[],closes:[]},
+{id:"sek_c02_severance",label:"Immortal Severance (default)",note:"Use Kuro's blood and the Everblossom to sever the Dragon's Heritage. Wolf dies, Kuro is freed from immortality.",opens:[],closes:[]},
+{id:"sek_c02_purification",label:"Purification",note:"Requires: get Everblossom from Emma → give it to her → trigger second Hirata Estate visit (Father's Bell Charm) → defeat Owl (Father) → return the lotus. Wolf and Kuro both sacrifice themselves.",opens:[],closes:[]},
+{id:"sek_c02_return",label:"Return (True ending)",note:"Requires: Divine Child questline (Rice → Persimmon → Frozen Tears) → give Frozen Tears to Kuro → after final boss, Wolf sacrifices himself so Kuro can return to the Divine Realm. The most complete ending.",opens:[],closes:[]},
+]},
+]},
+{id:"sek_upgrades",title:"Upgrades & Collectibles",type:"missable",items:[
+{id:"sek_095",text:"Gourd Seeds (9 total — max 10 heals from Healing Gourd): Ashina Outskirts ×2, Hirata Estate ×1, Ashina Castle ×2, Senpou Temple ×1, Sunken Valley ×1, Mibu Village ×1, Fountainhead Palace ×1 — give all to Emma at the temple"},
+{id:"sek_096",text:"Prayer Beads (40 total — every 4 increases max Vitality and Posture): dropped by nearly every mini-boss and hidden in chests throughout all zones"},
+{id:"sek_097",text:"Skill trees: Shinobi Arts (Tengu), Ashina Arts (Isshin), Senpou Temple Arts (head monk), Prosthetic Arts (Sculptor) — find Esoteric Texts and give to the right person"},
+{id:"sek_098",text:"Prosthetic Tools: Shuriken Wheel (castle water wheel), Flame Vent (Outskirts), Loaded Umbrella (merchant), Loaded Axe (Hirata), Sabimaru (Ashina Castle store room), Divine Abduction (Senpou), Finger Whistle (Guardian Ape drop)"},
+{id:"sek_099",text:"Upgrade materials for tools: Scrap Iron, Scrap Magnetite, Black Gunpowder, Fulminated Mercury, Adamantite Scrap, Lump of Fat Wax, Lump of Grave Wax — from merchants and enemies"},
+{id:"sek_100",text:"Sake items for NPC lore: Unrefined Sake, Dragonspring Sake, Monkey Booze, Dokan's Sake, Ashina Sake — give to Sculptor and Emma for backstory about the Orangutan and the old days"},
+]},
+{id:"sek_questlines",title:"NPC Questlines",type:"missable",items:[
+{id:"sek_101",text:"Emma the Physician: talk frequently, give sake → she reveals Sculptor's past as Orangutan → key to Purification and Return endings — do NOT skip her dialogue"},
+{id:"sek_102",text:"Divine Child of Rejuvenation (Senpou): give Rice → she sends you for Taro Persimmon (Mibu Village) → she gives Frozen Tears → needed for Return ending"},
+{id:"sek_103",text:"Hanbei the Undying: training partner → after getting the Mortal Blade, he asks you to kill him (he is immortal and suffering) → use the Mortal Blade to give him death"},
+{id:"sek_104",text:"Tengu of Ashina (Isshin disguised): gives Shinobi Esoteric Text in exchange for killing 10 red-eyed Shura enemies → quest complete"},
+{id:"sek_105",text:"Pot Noble Harunaga & Koremori: trade Treasure Carp Scales for rare items — only one pot noble survives per playthrough depending on who gets the Truly Precious Bait"},
+]},
+]},
+{id:"er",label:"Elden Ring",shortLabel:"ER",accent:"#d4af5a",bg:"#0a0906",sections:[
+{id:"er_limgrave",title:"Limgrave — Opening",type:"main",items:[
+{id:"er_001",text:"Escape the Cave of Knowledge tutorial — defeat the Grafted Scion OR die to it (both work)"},
+{id:"er_002",text:"Arrive at the First Step Site of Grace"},
+{id:"er_003",text:"Talk to Melina at a Site of Grace after resting at 3 — receive Torrent the spirit horse"},
+{id:"er_004",text:"Find Kalé at the Church of Elleh — buy the Crafting Kit and Telescope"},
+{id:"er_005",text:"Visit Church of Elleh at night — Renna appears and gives you the Spirit Calling Bell and Lone Wolf Ashes"},
+{id:"er_006",text:"Collect Limgrave West and East map fragments"},
+{id:"er_007",text:"Find Roderika at Stormhill Shack — she is traumatized; exhaust her dialogue and give her the Chrysalids' Memento (from Stormveil)"},
+{id:"er_008",text:"Send Roderika to Roundtable Hold — she becomes a Spirit Tuner (upgrades Spirit Ashes)"},
+{id:"er_009",text:"Find Iron Fist Alexander stuck in a hole near Saintsbridge — smack his back to free him"},
+{id:"er_010",text:"Find the Warmaster's Shack — Knight Bernahl sells Ashes of War"},
+{id:"er_011",text:"Defeat Margit, the Fell Omen — use Margit's Shackle (bought from Patches) to stagger him twice"},
+{id:"er_012",text:"Navigate Stormveil Castle — Gostoc opens the side gate if you agree"},
+{id:"er_013",text:"Find the Curved Sword Talisman and other hidden loot in Stormveil"},
+{id:"er_014",text:"Find the Chrysalids' Memento in Stormveil (give to Roderika)"},
+{id:"er_015",text:"Defeat Godrick the Grafted — grafts a dragon arm in phase 2; receive Godrick's Great Rune"},
+{id:"er_016",text:"Activate Godrick's Great Rune at the Divine Tower of Limgrave (east of Stormveil)"},
+]},
+{id:"er_weeping",title:"Weeping Peninsula",type:"optional",requires:["er_limgrave"],items:[
+{id:"er_017",text:"Cross the Bridge of Sacrifice south of Limgrave"},
+{id:"er_018",text:"Find Irina on the road — she gives you a letter for her father Edgar"},
+{id:"er_019",text:"Find Edgar the Revenger at Castle Morne — deliver Irina's letter, he refuses to leave"},
+{id:"er_020",text:"Defeat Leonine Misbegotten at Castle Morne — drops the Grafted Blade Greatsword"},
+{id:"er_021",text:"Return to Irina — she has been killed. Edgar becomes Edgar the Revenger and invades you later"},
+{id:"er_022",text:"Find the Church of Pilgrimage — Sacred Tear #1"},
+{id:"er_023",text:"Find the Fourth Church of Marika — Sacred Tear #2"},
+]},
+{id:"er_liurnia",title:"Liurnia of the Lakes",type:"main",requires:["er_limgrave"],items:[
+{id:"er_024",text:"Reach Liurnia — via Stormveil OR around the east side of the castle"},
+{id:"er_025",text:"Collect Liurnia West and East map fragments"},
+{id:"er_026",text:"Find the Glintstone Key in the pond south of the Academy (guarded by a dragon)"},
+{id:"er_027",text:"Find Roderika at Roundtable Hold — confirm her as Spirit Tuner after talking to Hewg"},
+{id:"er_028",text:"Find White-Faced Varré at the Rose Church — he gives Festering Bloody Fingers (invade 3 times) for his questline"},
+{id:"er_029",text:"Complete Varré's questline: invade 3 times → anoint the cloth with a maiden's blood (Fia or Church of Inhibition) → receive Pureblood Knight's Medal → teleport to Mohgwyn Palace"},
+{id:"er_030",text:"Defeat Red Wolf of Radagon inside the Academy"},
+{id:"er_031",text:"Defeat Rennala, Queen of the Full Moon — phase 1: break golden shield (kill golden students); phase 2: direct fight"},
+{id:"er_032",text:"Receive the Great Rune of the Unborn — allows respec/rebirth at Rennala (costs a Larval Tear)"},
+{id:"er_033",text:"Find Miriel, Pastor of Vows at the Church of Vows — absolves sins, teaches sorceries and incantations"},
+{id:"er_034",text:"Explore Caria Manor — Royal Knight Loretta guards the way to Three Sisters"},
+{id:"er_035",text:"Defeat Royal Knight Loretta in Caria Manor"},
+{id:"er_036",text:"Enter Three Sisters — find Ranni's Rise, Renna's Rise, Seluvis's Rise"},
+{id:"er_037",text:"Find Sellen at Waypoint Ruins (Limgrave) — she teaches sorceries and has a questline"},
+{id:"er_038",text:"Explore the Ruin-Strewn Precipice at the north end of Liurnia — leads to Altus Plateau"},
+]},
+{id:"er_ranni",title:"Ranni's Questline",type:"optional",requires:["er_liurnia"],items:[
+{id:"er_039",text:"Talk to Ranni at Ranni's Rise (Three Sisters) at night — she recruits you as her servant"},
+{id:"er_040",text:"Talk to Ranni's servants: Blaidd the Half-Wolf, Iji the war counselor, Seluvis the sorcerer"},
+{id:"er_041",text:"Defeat Starscourge Radahn — his death causes a meteorite to fall, opening Nokron"},
+{id:"er_042",text:"Enter Nokron, Eternal City via the crater in Mistwood (Limgrave)"},
+{id:"er_043",text:"Defeat Mimic Tear in Nokron — it copies your exact build and equipment"},
+{id:"er_044",text:"Find the Fingerslayer Blade in the Night's Sacred Ground chest"},
+{id:"er_045",text:"Give the Fingerslayer Blade to Ranni — she gives you the Carian Inverted Statue"},
+{id:"er_046",text:"Use the Carian Inverted Statue at the Carian Study Hall — inverts the building"},
+{id:"er_047",text:"Find the Cursemark of Death at the top of the inverted Carian Study Hall"},
+{id:"er_048",text:"Access Ainsel River Main via the sending gate in Ranni's Rise — pick up the miniature Ranni doll"},
+{id:"er_049",text:"Rest at a site of grace 3 times with the doll in your inventory — Ranni wakes up inside it"},
+{id:"er_050",text:"Defeat Baleful Shadow (Blaidd's shadow form) in Ainsel River"},
+{id:"er_051",text:"Cross the Lake of Rot — use Preserving Boluses or stack immunity; find the Grand Cloister"},
+{id:"er_052",text:"Defeat Astel, Naturalborn of the Void — alien boss with shooting stars and a grab that deletes HP"},
+{id:"er_053",text:"Ascend to the Moonlight Altar plateau"},
+{id:"er_054",text:"Defeat Glintstone Dragon Adula (mini-boss on the plateau)"},
+{id:"er_055",text:"Find the Cathedral of Manus Celes — Ranni is inside, place the Dark Moon Ring on her finger"},
+{id:"er_056",text:"After defeating Radagon and Elden Beast: Ranni's blue summon sign appears outside — summon her for the Age of Stars ending"},
+]},
+{id:"er_caelid",title:"Caelid & Dragonbarrow",type:"main",requires:["er_limgrave"],items:[
+{id:"er_057",text:"Collect Caelid and Dragonbarrow map fragments"},
+{id:"er_058",text:"Find Millicent at the Church of the Plague — she has scarlet rot; give her the Unalloyed Gold Needle (craft from Cleanrot Knight drop in Stillwater Cave)"},
+{id:"er_059",text:"Find Gurranq, Beast Clergyman at the Bestial Sanctum (Dragonbarrow) — give him Deathroot for incantations"},
+{id:"er_060",text:"Defeat Starscourge Radahn at Redmane Castle (Festival of the Stars) — massive fight with NPC summons"},
+{id:"er_061",text:"After Radahn: meteorite falls in Mistwood (Limgrave) — opens the path to Nokron"},
+{id:"er_062",text:"Defeat Decaying Ekzykes (optional dragon boss on the road through Caelid)"},
+{id:"er_063",text:"Explore Cathedral of Dragon Communion — buy dragon breath incantations with Dragon Hearts"},
+]},
+{id:"er_altus",title:"Altus Plateau & Leyndell",type:"main",requires:["er_liurnia"],items:[
+{id:"er_064",text:"Reach Altus Plateau via Grand Lift of Dectus (need both Dectus Medallion halves) OR via Ruin-Strewn Precipice"},
+{id:"er_065",text:"Collect the Altus Plateau map fragment"},
+{id:"er_066",text:"Find the Shaded Castle — get the Valkyrie's Prosthesis for Millicent's questline"},
+{id:"er_067",text:"Find Goldmask and Brother Corhyn near the Erdtree Gazing Hill — follow them for the Goldmask ending"},
+{id:"er_068",text:"Solve Goldmask's riddle: use the Law of Regression sorcery at the Erdtree Sanctuary statue in Leyndell"},
+{id:"er_c01",type:"choice",question:"Do you join Volcano Manor?",options:[
+{id:"er_c01_join",label:"Join Volcano Manor (via Rya or the abductor virgin)",note:"Complete assassination contracts for Tanith — unlock Rykard boss fight and unique rewards. Rya/Zorayas questline here.",opens:["er_volcano"],closes:[]},
+{id:"er_c01_skip",label:"Skip Volcano Manor entirely",note:"Miss Rykard's boss fight and Tanith's unique armor set. Rya questline not available.",opens:[],closes:["er_volcano"]},
+]},
+{id:"er_069",text:"Defeat the Draconic Tree Sentinel guarding the main Leyndell gate"},
+{id:"er_070",text:"Collect the Leyndell, Royal Capital map fragment"},
+{id:"er_071",text:"Defeat Godfrey, First Elden Lord (golden shade) — phantom boss in Leyndell"},
+{id:"er_072",text:"Defeat Morgott, the Omen King — Margit reveals his true form; receive Morgott's Great Rune and the Rold Medallion"},
+{id:"er_073",text:"Use the Rold Medallion at the Grand Lift of Rold — ascend to Mountaintops of the Giants"},
+]},
+{id:"er_volcano",title:"Volcano Manor",type:"optional",items:[
+{id:"er_074",text:"Join via Rya at the Lux Ruins (Liurnia) — she gives an invitation"},
+{id:"er_075",text:"Talk to Tanith — agree to join and do assassination contracts"},
+{id:"er_076",text:"Assassination target 1: Old Knight Istvan (Limgrave) — NPC invasion near Stormhill"},
+{id:"er_077",text:"Assassination target 2: Rileigh the Idle (Altus Plateau)"},
+{id:"er_078",text:"Assassination target 3: Juno Hoslow (Mountaintops of the Giants)"},
+{id:"er_079",text:"Rya/Zorayas questline: find her true serpent form, give her the Tonic of Forgetfulness OR let her remember"},
+{id:"er_c02",type:"choice",question:"Rya (Zorayas) — how do you handle her situation?",options:[
+{id:"er_c02_tonic",label:"Give her the Tonic of Forgetfulness (from Seluvis or buy)",note:"She forgets her true nature and disappears happily. You find her armor in her room.",opens:[],closes:[]},
+{id:"er_c02_kill",label:"Kill her at her request (mercy kill)",note:"She thanks you for ending her suffering. You get her armor.",opens:[],closes:[]},
+{id:"er_c02_leave",label:"Leave her to figure it out",note:"She stays in her room indefinitely. No reward.",opens:[],closes:[]},
+]},
+{id:"er_080",text:"Defeat Rykard, Lord of Blasphemy — use the Serpent-Hunter great spear found in the arena; poke him from range"},
+]},
+{id:"er_underground",title:"Underground: Siofra, Nokron, Ainsel, Deeproot",type:"optional",requires:["er_liurnia"],items:[
+{id:"er_081",text:"Siofra River: enter via the well in Mistwood (Limgrave) — underground Erdtree region"},
+{id:"er_082",text:"Light the eight flames to summon the Ancestor Spirit (optional boss)"},
+{id:"er_083",text:"Defeat Ancestor Spirit and Regal Ancestor Spirit (Nokron version)"},
+{id:"er_084",text:"Mohgwyn Palace: via Varré's questline (Pureblood Knight's Medal) OR via secret teleporter in Consecrated Snowfield"},
+{id:"er_085",text:"Defeat Mohg, Lord of Blood — use Purifying Crystal Tear in Flask of Wondrous Physick to nullify his blood curse in phase 2"},
+{id:"er_086",text:"Deeproot Depths: accessible from Nokron waterfall or Siofra Aqueduct"},
+{id:"er_087",text:"Find Fia, Deathbed Companion in Deeproot Depths — give her the Cursemark of Death (from Carian Study Hall)"},
+{id:"er_088",text:"Defeat Lichdragon Fortissax (Fia's questline boss) — enter her dream, dragon with lightning attacks"},
+{id:"er_089",text:"Receive the Mending Rune of the Death-Prince from Fia — needed for Duskborn ending"},
+]},
+{id:"er_giants",title:"Mountaintops of the Giants",type:"main",requires:["er_altus"],items:[
+{id:"er_090",text:"Collect Mountaintops of the Giants map fragment"},
+{id:"er_091",text:"Find the right half of the Haligtree Secret Medallion at the Village of the Albinaurics (Liurnia)"},
+{id:"er_092",text:"Find the left half at Castle Sol — defeat Commander Niall to access it"},
+{id:"er_093",text:"Defeat Commander Niall — knight with two crucible knight summons; kill the summons first"},
+{id:"er_094",text:"Defeat Fire Giant — attack the ankle, then his eye after phase 2 rolls; largest boss in the game"},
+{id:"er_095",text:"Speak to Melina at the Forge of the Giants — she sacrifices herself to burn the Erdtree"},
+{id:"er_c03",type:"choice",question:"How do you burn the Erdtree?",options:[
+{id:"er_c03_melina",label:"Let Melina sacrifice herself (normal path)",note:"Melina burns the Erdtree and disappears. Standard for most endings.",opens:[],closes:[]},
+{id:"er_c03_flame",label:"Use the Frenzied Flame (Lord of Frenzied Flame path)",note:"Requires finding the Three Fingers under Leyndell first (strip all armor). Melina leaves in disgust and becomes hostile. Required for the Frenzied Flame ending.",opens:["er_frenzied"],closes:[]},
+]},
+]},
+{id:"er_frenzied",title:"Lord of Frenzied Flame Path",type:"optional",items:[
+{id:"er_096",text:"Find the underground Subterranean Shunning-Grounds beneath Leyndell"},
+{id:"er_097",text:"Navigate to the very bottom — remove ALL armor and equipment to open the final door"},
+{id:"er_098",text:"The Three Fingers embrace you — you become the vessel of the Frenzied Flame"},
+{id:"er_099",text:"Melina appears one final time and swears to become your Kindling Maiden to kill you"},
+{id:"er_100",text:"After defeating Radagon and Elden Beast: incinerate the Erdtree with the Frenzied Flame"},
+{id:"er_101",text:"Optional: to undo the Frenzied Flame (to get a different ending), use Miquella's Needle (obtained after defeating Malenia) in the Dragonlord Placidusax arena"},
+]},
+{id:"er_haligtree",title:"Consecrated Snowfield & Haligtree",type:"optional",requires:["er_giants"],items:[
+{id:"er_102",text:"Use both halves of the Haligtree Secret Medallion at the Grand Lift of Rold — select Hoist Secret Medallion"},
+{id:"er_103",text:"Enter Consecrated Snowfield — blizzard reduces visibility significantly"},
+{id:"er_104",text:"Collect the Consecrated Snowfield map fragment"},
+{id:"er_105",text:"Find the teleporter to Mohgwyn Palace in western Consecrated Snowfield (if you haven't done Varré's route)"},
+{id:"er_106",text:"Find Ordina, Liturgical Town — solve the puzzle (light 4 torches while invisible enemies hunt you) to open the Haligtree portal"},
+{id:"er_107",text:"Enter Miquella's Haligtree and collect the map fragment"},
+{id:"er_108",text:"Defeat Loretta, Knight of the Haligtree (harder version than Caria Manor)"},
+{id:"er_109",text:"Descend to Elphael, Brace of the Haligtree"},
+{id:"er_110",text:"Find Millicent's questline conclusion"},
+{id:"er_c04",type:"choice",question:"Millicent — help her or betray her?",options:[
+{id:"er_c04_help",label:"Help Millicent (fight her sisters for her)",note:"She thanks you and eventually passes away peacefully. You receive the Unalloyed Gold Needle afterward — give to Gowry or use to make Miquella's Needle (undoes Frenzied Flame)",opens:[],closes:[]},
+{id:"er_c04_betray",label:"Betray Millicent (summon the invasion sign instead)",note:"You invade her world and kill her. You receive Millicent's Prosthesis talisman.",opens:[],closes:[]},
+]},
+{id:"er_111",text:"Defeat Malenia, Blade of Miquella — widely considered the hardest boss in FromSoft history; she heals on every hit including blocked hits; two phases"},
+]},
+{id:"er_farum",title:"Crumbling Farum Azula",type:"main",requires:["er_giants"],items:[
+{id:"er_112",text:"Teleported here automatically after burning the Erdtree"},
+{id:"er_113",text:"Collect the Farum Azula map fragment"},
+{id:"er_114",text:"Navigate the floating ruins — beastmen, ancient dragons, and crumbling architecture"},
+{id:"er_115",text:"Find the Dragonlord Placidusax secret arena — walk to the edge of a certain ruined platform and use the Lie Down gesture"},
+{id:"er_116",text:"Defeat Dragonlord Placidusax (optional) — two-headed ancient dragon, one of the best boss fights in the game"},
+{id:"er_117",text:"Defeat Godskin Duo — Godskin Noble and Godskin Apostle simultaneously; they have a shared HP pool"},
+{id:"er_118",text:"Defeat Maliketh, the Black Blade — two phases: Beast Clergyman → Maliketh; each attack in phase 2 drains your max HP"},
+{id:"er_119",text:"Teleported back to Leyndell — now the Ashen Capital"},
+]},
+{id:"er_ashen",title:"Leyndell, Ashen Capital & Endgame",type:"main",requires:["er_farum"],items:[
+{id:"er_120",text:"Navigate Ashen Leyndell — same layout but ash-covered, different enemies"},
+{id:"er_121",text:"Find Goldmask's conclusion on the broken bridge — he has solved the riddle (if you completed his quest)"},
+{id:"er_122",text:"Defeat Sir Gideon Ofnir, the All-Knowing — sorcerer boss who uses all the Great Rune spells"},
+{id:"er_123",text:"Defeat Godfrey, First Elden Lord (true form) — two phases: axe combat → fist combat; excellent boss design"},
+{id:"er_124",text:"Ascend to the Elden Throne"},
+{id:"er_125",text:"Defeat Radagon of the Golden Order — fast hammer boss; holy damage and Black Flame work well"},
+{id:"er_126",text:"Immediately transitions to Elden Beast — massive cosmic entity; stay close, deal holy damage"},
+{id:"er_c05",type:"choice",question:"Which ending do you choose?",options:[
+{id:"er_c05_lord",label:"Elden Lord (default)",note:"Approach the fractured Elden Ring and mend it — you become Elden Lord",opens:[],closes:[]},
+{id:"er_c05_stars",label:"Age of Stars (Ranni's ending)",note:"Requires completing Ranni's full questline. After Elden Beast: Ranni's blue summon sign appears — call her, then walk away with her",opens:[],closes:[]},
+{id:"er_c05_frenzied",label:"Lord of Frenzied Flame",note:"Requires the Three Fingers embrace. After Elden Beast: incinerate the Erdtree and burn the world",opens:[],closes:[]},
+{id:"er_c05_duskborn",label:"Age of the Duskborn (Fia's ending)",note:"Requires completing Fia's questline and receiving the Mending Rune of the Death-Prince. Use the rune after Elden Beast.",opens:[],closes:[]},
+{id:"er_c05_order",label:"Blessing of Despair / Perfect Order (minor endings)",note:"Use Dung Eater's Mending Rune (Blessing of Despair) or Goldmask's Mending Rune (Perfect Order) after Elden Beast",opens:[],closes:[]},
+]},
+]},
+{id:"er_dlc",title:"DLC: Shadow of the Erdtree",type:"optional",requires:["er_ashen"],items:[
+{id:"er_127",text:"Prerequisites: defeat Mohg, Lord of Blood AND interact with Miquella's Cocoon in Mohg's arena"},
+{id:"er_128",text:"Enter the Realm of Shadow — a parallel world under Miquella's influence"},
+{id:"er_129",text:"Collect the Gravesite Plain map fragment"},
+{id:"er_130",text:"CRITICAL: collect Scadutree Fragments (max 20) and Revered Spirit Ashes (max 10) throughout the DLC — these buff your attack and defense specifically in the Shadow Realm; bosses are brutal without them"},
+{id:"er_131",text:"Find Leda at the first Site of Grace — she is one of Miquella's followers, questline begins"},
+{id:"er_132",text:"Explore the Shadow Keep — large castle with multiple paths"},
+{id:"er_133",text:"Defeat Rellana, Twin Moon Knight — fast dual-blade knight with moon sorcery combos"},
+{id:"er_134",text:"Find the Scadutree Avatar near the Minor Erdtree of Shadow (optional — a tree avatar boss)"},
+{id:"er_135",text:"Defeat Messmer the Impaler — fire spear wielder, transforms into a serpent in phase 2"},
+{id:"er_136",text:"Navigate the Abyssal Woods — avoid the Lamenter (nearly unkillable, causes madness), find Midra's area"},
+{id:"er_137",text:"Defeat Midra, Lord of Frenzied Flame (optional) — two phases: desperate man → Frenzied Flame avatar"},
+{id:"er_138",text:"Reach the Jagged Peak — Bayle the Dread is here (optional dragon boss); summon Igon NPC for a dramatic encounter"},
+{id:"er_139",text:"Defeat Bayle the Dread — hardest dragon boss in the series"},
+{id:"er_140",text:"Navigate the Ancient Ruins of Rauh and the Finger Ruins"},
+{id:"er_141",text:"Defeat Romina, Saint of the Bud — fast scarlet rot insect-lady boss"},
+{id:"er_142",text:"Enter Enir-Ilim — Miquella's inner sanctum, final DLC area"},
+{id:"er_143",text:"Defeat Metyr, Mother of Fingers (optional) — cosmic horror with many fingers"},
+{id:"er_144",text:"Defeat Promised Consort Radahn — Miquella has called Radahn's soul into his body; two phases; widely considered the hardest boss in FromSoft history"},
+{id:"er_c06",type:"choice",question:"Leda questline — how does it resolve?",options:[
+{id:"er_c06_leda",label:"Side with Leda",note:"Leda's allies survive, other followers die. Different final DLC cutscene.",opens:[],closes:[]},
+{id:"er_c06_against",label:"Side against Leda",note:"Leda dies. Other followers may survive. Different cutscene outcome.",opens:[],closes:[]},
+]},
+]},
+{id:"er_upgrades",title:"Upgrades & Collectibles",type:"missable",items:[
+{id:"er_145",text:"Golden Seeds (24 total — each 1 or 2 seeds add a Flask charge, max +14 flasks total): found at Minor Erdtrees and as quest rewards throughout all regions"},
+{id:"er_146",text:"Sacred Tears (12 total — each upgrades Flask healing amount): found inside churches across all regions — one per church"},
+{id:"er_147",text:"Smithing Stones: regular weapons go to +25 (needs Smithing Stone [1] through [8] then Ancient Dragon Smithing Stone for final upgrade)"},
+{id:"er_148",text:"Somber Smithing Stones: special/unique weapons go to +10 (Somber Ancient Dragon Smithing Stone for final upgrade)"},
+{id:"er_149",text:"Spirit Ashes: found throughout the world, upgraded with Grave Glovewort (regular) or Ghost Glovewort (unique) — Roderika at Roundtable does the upgrading"},
+{id:"er_150",text:"Great Runes: activate at their Divine Towers — Godrick (Limgrave tower), Morgott (Leyndell tower), Radahn (Lenne's Rise tower), Rykard (no activation needed), Malenia (Haligtree tower)"},
+{id:"er_151",text:"Map fragments: one per region — Limgrave ×2, Liurnia ×2, Caelid ×2, Altus, Leyndell, Mountaintops, Siofra, Nokron, Ainsel, Deeproot, Snowfield, Haligtree ×2, Farum Azula, Shadow of the Erdtree regions ×4+"},
+]},
+{id:"er_questlines",title:"NPC Questlines",type:"missable",items:[
+{id:"er_152",text:"Ranni: Renna gives Spirit Bell at night → recruit at Ranni's Rise → full questline through Nokron → Lake of Rot → Moonlight Altar → Age of Stars ending"},
+{id:"er_153",text:"Fia the Deathbed Companion: Roundtable Hold → give embrace (receive Baldachin's Blessing) → give Cursemark of Death (Carian Study Hall) → Deeproot Depths → Lichdragon Fortissax → Duskborn ending"},
+{id:"er_154",text:"Goldmask & Brother Corhyn: Altus Plateau → follow to Leyndell rooftop → solve riddle with Law of Regression sorcery → Perfect Order ending"},
+{id:"er_155",text:"Dung Eater: Roundtable Hold (red phantom) → free his body in Leyndell Subterranean Shunning-Grounds → give 5 Seedbed Curses → Blessing of Despair ending"},
+{id:"er_156",text:"White-Faced Varré: First Step → Rose Church → invade ×3 → anoint cloth with maiden's blood → Mohgwyn Palace access"},
+{id:"er_157",text:"Millicent: Church of Plague → Unalloyed Gold Needle → Shaded Castle → multiple encounters → Haligtree conclusion (help or betray)"},
+{id:"er_158",text:"Iron Fist Alexander: free in Limgrave → Redmane Castle (Radahn) → Jarburg (Liurnia) → Farum Azula → final fight for his innards (used to craft a talisman)"},
+{id:"er_159",text:"Patches: Murkwater Cave (Limgrave) → Scenic Isle (Liurnia) → Volcano Manor → Shaded Castle → Leyndell — always shady, never kill him"},
+{id:"er_160",text:"Nepheli Loux: Stormveil Castle → Roundtable Hold → give Ancient Dragon Smithing Stone → Village of the Albinaurics → she becomes the new ruler of Stormveil"},
+]},
+]},
+];
+// Initialize state AFTER GAMES is defined
+ST = load();
 render();
 </script>
 </body>
